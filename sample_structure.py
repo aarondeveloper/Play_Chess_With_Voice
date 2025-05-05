@@ -236,10 +236,83 @@ class VoiceChessController:
         self.tts_engine.say(text)
         self.tts_engine.runAndWait()
 
+    def challenge_player(self, username, rated=False, clock_limit=30, clock_increment=0):
+        """Send a challenge to a specific player"""
+        self.speak(f"Challenging {username} to a game. Waiting for them to accept.")
+        
+        try:
+            # Create a challenge to a specific user
+            challenge = self.client.challenges.create(
+                username=username,
+                rated=rated,
+                clock_limit=clock_limit * 60,  # Convert minutes to seconds
+                clock_increment=clock_increment,
+                variant='standard',
+                color='random'
+            )
+            
+            self.speak(f"Challenge sent. Challenge ID: {challenge['id']}")
+            
+            # Start listening for game state updates in a separate thread
+            event_thread = threading.Thread(
+                target=self._listen_for_game_events,
+                daemon=True
+            )
+            event_thread.start()
+            
+            return challenge['id']
+            
+        except Exception as e:
+            self.speak(f"Error creating challenge: {str(e)}")
+            return None
+
+    def listen_for_command(self):
+        """Listen for voice commands"""
+        with sr.Microphone() as source:
+            self.speak("Listening for command. Say 'help' for available commands.")
+            audio = self.recognizer.listen(source)
+            
+        try:
+            command = self.recognizer.recognize_google(audio).lower()
+            print(f"Command recognized: {command}")
+            
+            if "challenge" in command:
+                # Extract username from command
+                words = command.split()
+                if len(words) > 1 and words[0] == "challenge":
+                    username = words[1]
+                    self.challenge_player(username)
+                    return
+            
+            elif "open seek" in command or "create game" in command:
+                self.start_game()
+                return
+            
+            elif "help" in command:
+                self.speak("Available commands: challenge [username], open seek, help")
+                return
+            
+            self.speak("Command not recognized. Say 'help' for available commands.")
+            
+        except Exception as e:
+            self.speak(f"Error: {str(e)}")
+
 # Example usage
 if __name__ == "__main__":
     controller = VoiceChessController()
-    controller.start_game()
+    
+    # Ask the user if they want to create an open seek or challenge a specific player
+    print("Do you want to:")
+    print("1. Create an open seek (anyone can accept)")
+    print("2. Challenge a specific player")
+    
+    choice = input("Enter your choice (1 or 2): ")
+    
+    if choice == "2":
+        username = input("Enter the Lichess username to challenge: ")
+        controller.challenge_player(username)
+    else:
+        controller.start_game()
     
     # Main game loop
     while True:
