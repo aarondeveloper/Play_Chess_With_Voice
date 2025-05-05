@@ -18,17 +18,35 @@ class GameState:
     def update_from_event(self, event):
         """Update state from a game event"""
         if event['type'] == 'gameState':
-            # The moves and status are directly in the event, not in a 'state' key
+            # Debug print the entire event
+            print(f"DEBUG Event: {event}")
+            
             self.status = event.get('status')
-            self.is_my_turn = event.get('isMyTurn', False)
+            old_turn = self.is_my_turn
+            
+            # Determine turn based on moves and our color
+            moves = event.get('moves', '').split()
+            num_moves = len(moves)
+            # It's our turn if:
+            # - We're white and moves count is even (0, 2, 4...)
+            # - We're black and moves count is odd (1, 3, 5...)
+            self.is_my_turn = (num_moves % 2 == 0) == (self.my_color == 'white')
+            
+            print(f"DEBUG Turn changed: {old_turn} -> {self.is_my_turn}")
+            print(f"DEBUG Moves count: {num_moves}, Our color: {self.my_color}")
             
             # Update moves
-            if 'moves' in event and event['moves']:
-                new_moves = event['moves'].split()
-                if len(new_moves) > len(self.current_moves):
-                    last_move = new_moves[-1]
-                    self.current_moves = new_moves
-                    return last_move
+            if moves:
+                if len(moves) > len(self.current_moves):
+                    last_move = moves[-1]
+                    # Don't report our own move as opponent's move
+                    if len(self.current_moves) == len(moves) - 1:
+                        # This is a new move
+                        is_opponent_move = not self.is_my_turn  # If it's our turn, last move was opponent's
+                        self.current_moves = moves
+                        if is_opponent_move:
+                            print(f"DEBUG: Opponent moved, our turn: {self.is_my_turn}")
+                            return last_move
             
             # Print more info for debugging
             print(f"Turn: {'ours' if self.is_my_turn else 'opponents'}")
