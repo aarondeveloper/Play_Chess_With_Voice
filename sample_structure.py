@@ -266,6 +266,16 @@ class VoiceChessController:
             self.speak(f"Error creating challenge: {str(e)}")
             return None
 
+    def challenge_player_from_env(self):
+        """Challenge the player specified in the LICHESS_OPPONENT environment variable"""
+        opponent = os.getenv("LICHESS_OPPONENT")
+        
+        if not opponent:
+            self.speak("No opponent specified in environment variables. Please add LICHESS_OPPONENT to your .env file.")
+            return None
+        
+        return self.challenge_player(opponent)
+
     def listen_for_command(self):
         """Listen for voice commands"""
         with sr.Microphone() as source:
@@ -304,11 +314,14 @@ if __name__ == "__main__":
     # Ask the user if they want to create an open seek or challenge a specific player
     print("Do you want to:")
     print("1. Create an open seek (anyone can accept)")
-    print("2. Challenge a specific player")
+    print("2. Challenge a specific player (from .env)")
+    print("3. Challenge a specific player (enter username)")
     
-    choice = input("Enter your choice (1 or 2): ")
+    choice = input("Enter your choice (1, 2, or 3): ")
     
     if choice == "2":
+        controller.challenge_player_from_env()
+    elif choice == "3":
         username = input("Enter the Lichess username to challenge: ")
         controller.challenge_player(username)
     else:

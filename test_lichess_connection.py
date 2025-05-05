@@ -76,13 +76,19 @@ def test_lichess_connection():
     
     return True
 
-def test_direct_challenge(username):
-    """Test sending a direct challenge to a specific user"""
-    # Get API token from environment variables
+def test_direct_challenge():
+    """Test sending a direct challenge to a specific user defined in .env"""
+    # Get API token and opponent username from environment variables
     api_token = os.getenv("LICHESS_API_TOKEN")
+    opponent = os.getenv("LICHESS_OPPONENT")
     
     if not api_token:
         print("Error: LICHESS_API_TOKEN not found in environment variables")
+        return False
+    
+    if not opponent:
+        print("Error: LICHESS_OPPONENT not found in environment variables")
+        print("Please add LICHESS_OPPONENT=username to your .env file")
         return False
     
     print("Testing Lichess API connection...")
@@ -97,10 +103,10 @@ def test_direct_challenge(username):
         print(f"Successfully connected to Lichess as: {account['username']}")
         
         # Create a challenge to a specific user
-        print(f"Challenging {username}...")
+        print(f"Challenging {opponent}...")
         
         challenge = client.challenges.create(
-            username=username,
+            username=opponent,
             rated=False,
             clock_limit=1800,  # 30 minutes in seconds
             clock_increment=0,
@@ -124,7 +130,7 @@ def test_direct_challenge(username):
                     print(f"Game URL: https://lichess.org/{game_id}")
                     return game_id
                 elif event['type'] == 'challengeDeclined':
-                    print(f"Challenge declined by {username}")
+                    print(f"Challenge declined by {opponent}")
                     return None
             return None
         
@@ -146,8 +152,14 @@ def test_direct_challenge(username):
     return True
 
 if __name__ == "__main__":
-    # Uncomment and modify this line to test challenging a specific user
-    test_direct_challenge("immortal_dev")
+    # Ask the user what they want to test
+    print("What would you like to test?")
+    print("1. Create an open seek (anyone can accept)")
+    print("2. Challenge a specific player (from .env)")
     
-    # Or use the original test function for open seeks
-    #test_lichess_connection() 
+    choice = input("Enter your choice (1 or 2): ")
+    
+    if choice == "2":
+        test_direct_challenge()
+    else:
+        test_lichess_connection() 
