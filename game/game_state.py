@@ -8,6 +8,13 @@ class GameState:
         self.game_id = None
         self.status = None
         
+    def set_color(self, color):
+        """Set player color and initial turn"""
+        self.my_color = color
+        # If we're white, it's our turn first
+        self.is_my_turn = (color == 'white')
+        print(f"Playing as {color} - {'your' if self.is_my_turn else 'opponent'}'s turn first")
+
     def update_from_event(self, event):
         """Update state from a game event"""
         if event['type'] == 'gameState':

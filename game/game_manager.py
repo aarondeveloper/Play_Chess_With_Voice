@@ -1,5 +1,6 @@
 """Module for managing game flow and events"""
 import berserk
+import time
 from .game_state import GameState
 
 class GameManager:
@@ -13,8 +14,8 @@ class GameManager:
         
         for event in self.client.board.stream_incoming_events():
             if event['type'] == 'gameStart' and event['game']['id'] == game_id:
-                self.state.my_color = event['game']['color']
-                print(f"Game started! You are playing as: {self.state.my_color}")
+                # Set color and initial turn
+                self.state.set_color(event['game']['color'])
                 return True
             elif event['type'] == 'challengeDeclined':
                 print("Challenge was declined!")
@@ -26,25 +27,32 @@ class GameManager:
         """Process and display opponent's move"""
         if move:
             print(f"\nOpponent played: {move}")
+            # Add a small delay to ensure the message is seen
+            time.sleep(1)
     
     def make_move(self, game_id, move_function):
         """Make a move using the provided move function"""
+        print("\nYour turn! Please speak your move...")
         while True:
-            move = move_function()
-            
-            if not move:
-                print("Couldn't understand the move. Please try again.")
-                continue
-                
-            if move == "EXIT":
-                print("Exiting game...")
-                return False
-            
             try:
+                move = move_function()
+                
+                if not move:
+                    print("Couldn't understand the move. Please try again.")
+                    continue
+                    
+                if move == "EXIT":
+                    print("Exiting game...")
+                    return False
+                
+                # Try to make the move
                 self.client.board.make_move(game_id, move)
                 print(f"Move {move} sent successfully!")
                 return True
                 
             except berserk.exceptions.ResponseError as e:
                 print(f"Invalid move: {e}")
-                print("Please try another move.") 
+                print("Please try another move.")
+            except Exception as e:
+                print(f"Error making move: {e}")
+                print("Please try again.") 
