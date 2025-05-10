@@ -27,7 +27,19 @@ class GameState:
     def update_from_event(self, event):
         """Update state from a game event"""
         if event['type'] == 'gameState':
+            # Update game status
+            old_status = self.status
             self.status = event.get('status')
+            
+            # Check for game end conditions
+            if self.status == 'mate':
+                return 'checkmate', event.get('winner')
+            elif self.status == 'resign':
+                return 'resign', event.get('winner')
+            elif self.status == 'draw':
+                return 'draw', None
+            
+            # Rest of the existing move processing code...
             old_turn = self.is_my_turn
             
             # Determine turn based on moves and our color

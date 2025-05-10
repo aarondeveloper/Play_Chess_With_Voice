@@ -49,26 +49,22 @@ class LichessVoiceGame:
         print("Starting to play...")
         # Stream game state
         for event in self.client.board.stream_game_state(game_id):
-            # Update game state and get last move if any
-            last_move = self.game_manager.state.update_from_event(event)
+            # Update game state and get last move or game end info
+            result = self.game_manager.state.update_from_event(event)
+            
+            if isinstance(result, tuple) and result[0] in ['checkmate', 'resign', 'draw']:
+                # Handle game end
+                self.game_manager.process_game_end(result[0], result[1])
+                break
             
             # Process opponent's move if any
-            if last_move:
-                self.game_manager.process_opponent_move(last_move)
-                # Add a small delay after opponent's move
-                #time.sleep(0.5)
+            if result:
+                self.game_manager.process_opponent_move(result)
             
             # Make our move if it's our turn
             if self.game_manager.state.is_my_turn:
                 if not self.game_manager.make_move(game_id, get_chess_move_from_voice):
                     return
-                # Add a small delay after our move
-                #time.sleep(0.5)
-            
-            # Check if game is finished
-            if self.game_manager.state.status == 'finished':
-                print("\nGame Over!")
-                break
 
 def main():
     """Main function to start and play a game"""

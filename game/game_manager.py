@@ -85,4 +85,19 @@ class GameManager:
                 print("Please try another move.")
             except Exception as e:
                 print(f"Error making move: {e}")
-                print("Please try again.") 
+                print("Please try again.")
+
+    def process_game_end(self, end_type, winner):
+        """Announce game end conditions"""
+        if end_type == 'checkmate':
+            message = "Checkmate! "
+            message += "You won!" if winner == self.state.my_color else "You lost."
+        elif end_type == 'resign':
+            message = "Game over by resignation. "
+            message += "You won!" if winner == self.state.my_color else "Your opponent resigned."
+        elif end_type == 'draw':
+            message = "Game drawn!"
+        
+        print(f"\n=== GAME OVER ===\n{message}")
+        self.tts_engine.say(message)
+        self.tts_engine.runAndWait() 
