@@ -18,17 +18,24 @@ class GameState:
     def update_from_event(self, event):
         """Update state from a game event"""
         if event['type'] == 'gameState':
-            # The moves and status are directly in the event, not in a 'state' key
             self.status = event.get('status')
-            self.is_my_turn = event.get('isMyTurn', False)
+            old_turn = self.is_my_turn
+            
+            # Determine turn based on moves and our color
+            moves = event.get('moves', '').split() if event.get('moves') else []
+            num_moves = len(moves)
+            self.is_my_turn = (num_moves % 2 == 0) == (self.my_color == 'white')
             
             # Update moves
-            if 'moves' in event and event['moves']:
-                new_moves = event['moves'].split()
-                if len(new_moves) > len(self.current_moves):
-                    last_move = new_moves[-1]
-                    self.current_moves = new_moves
-                    return last_move
+            if moves:  # Only process if there are actual moves
+                if len(moves) > len(self.current_moves):
+                    last_move = moves[-1]
+                    # Don't report our own move as opponent's move
+                    if len(self.current_moves) == len(moves) - 1:
+                        is_opponent_move = not self.is_my_turn
+                        self.current_moves = moves
+                        if is_opponent_move:
+                            return last_move
             
             # Print more info for debugging
             print(f"Turn: {'ours' if self.is_my_turn else 'opponents'}")
