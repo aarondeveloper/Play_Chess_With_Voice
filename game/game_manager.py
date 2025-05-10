@@ -23,12 +23,12 @@ class GameManager:
                 
         return False
     
-    def process_opponent_move(self, move):
+    def process_opponent_move(self, move_info):
         """Process and display opponent's move"""
-        if move:
-            print(f"\nOpponent played: {move}")
-            # Add a small delay to ensure the message is seen
-            time.sleep(1)
+        if move_info and move_info[0] and move_info[1]:
+            uci_move, san_move = move_info
+            print("\n=== OPPONENT'S MOVE ===")
+            print(f"Opponent played: {san_move}")
     
     def make_move(self, game_id, move_function):
         """Make a move using the provided move function"""

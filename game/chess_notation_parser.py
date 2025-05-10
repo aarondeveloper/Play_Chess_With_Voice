@@ -7,6 +7,18 @@ def parse_chess_notation_for_lichess(text):
     text = text.lower().strip()
     print(f"DEBUG: Parsing text: '{text}'")
     
+    # Check for promotion keywords
+    promotion_piece = None
+    if "promote" in text:
+        if "queen" in text:
+            promotion_piece = "q"
+        elif "knight" in text:
+            promotion_piece = "n"
+        elif "bishop" in text:
+            promotion_piece = "b"
+        elif "rook" in text:
+            promotion_piece = "r"
+    
     # Dictionary mapping spoken file names to chess notation
     files = {
         'a': 'a', 'alpha': 'a', 'ay': 'a', '8': 'a', 'hey': 'a',
@@ -55,6 +67,11 @@ def parse_chess_notation_for_lichess(text):
         from_square = squares[0]
         to_square = squares[1]
         move = f"{from_square[0]}{from_square[1]}{to_square[0]}{to_square[1]}"
+        
+        # Add promotion piece if specified
+        if promotion_piece and to_square[1] in ['1', '8']:
+            move += promotion_piece
+            
         print(f"DEBUG: Found squares {squares}, making move {move}")
         return move
     
