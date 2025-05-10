@@ -56,14 +56,14 @@ class LichessVoiceGame:
             if last_move:
                 self.game_manager.process_opponent_move(last_move)
                 # Add a small delay after opponent's move
-                time.sleep(0.5)
+                #time.sleep(0.5)
             
             # Make our move if it's our turn
             if self.game_manager.state.is_my_turn:
                 if not self.game_manager.make_move(game_id, get_chess_move_from_voice):
                     return
                 # Add a small delay after our move
-                time.sleep(0.5)
+                #time.sleep(0.5)
             
             # Check if game is finished
             if self.game_manager.state.status == 'finished':
