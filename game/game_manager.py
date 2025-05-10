@@ -17,10 +17,18 @@ class GameManager:
         for event in self.client.board.stream_incoming_events():
             if event['type'] == 'gameStart' and event['game']['id'] == game_id:
                 # Set color and initial turn
-                self.state.set_color(event['game']['color'])
+                color = event['game']['color']
+                self.state.set_color(color)
+                
+                # Announce game start
+                self.tts_engine.say(f"Game started! You are playing as {color}")
+                self.tts_engine.runAndWait()
+                
                 return True
             elif event['type'] == 'challengeDeclined':
                 print("Challenge was declined!")
+                self.tts_engine.say("Challenge was declined")
+                self.tts_engine.runAndWait()
                 return False
                 
         return False
