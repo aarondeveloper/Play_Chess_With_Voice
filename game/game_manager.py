@@ -2,11 +2,13 @@
 import berserk
 import time
 from .game_state import GameState
+import pyttsx3
 
 class GameManager:
     def __init__(self, client):
         self.client = client
         self.state = GameState()
+        self.tts_engine = pyttsx3.init()  # Initialize text-to-speech
     
     def wait_for_game_start(self, game_id):
         """Wait for the game to start"""
@@ -23,12 +25,32 @@ class GameManager:
                 
         return False
     
+    def speak_move(self, san_move):
+        """Convert SAN move to spoken format and say it"""
+        # Format the move for speech
+        speech_text = san_move.replace("N", "Knight ")
+        speech_text = speech_text.replace("B", "Bishop ")
+        speech_text = speech_text.replace("R", "Rook ")
+        speech_text = speech_text.replace("Q", "Queen ")
+        speech_text = speech_text.replace("K", "King ")
+        speech_text = speech_text.replace("x", " takes ")
+        speech_text = speech_text.replace("+", " check")
+        speech_text = speech_text.replace("#", " checkmate")
+        speech_text = speech_text.replace("O-O-O", "Castle queenside")
+        speech_text = speech_text.replace("O-O", "Castle kingside")
+
+        # Speak the move
+        print(f"Speaking: {speech_text}")
+        self.tts_engine.say(speech_text)
+        self.tts_engine.runAndWait()
+
     def process_opponent_move(self, move_info):
         """Process and display opponent's move"""
         if move_info and move_info[0] and move_info[1]:
             uci_move, san_move = move_info
             print("\n=== OPPONENT'S MOVE ===")
             print(f"Opponent played: {san_move}")
+            self.speak_move(san_move)
     
     def make_move(self, game_id, move_function):
         """Make a move using the provided move function"""
