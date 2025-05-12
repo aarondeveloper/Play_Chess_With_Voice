@@ -1,18 +1,16 @@
 """Module for parsing game setup voice commands"""
 import speech_recognition as sr
 import pyttsx3
-import threading
+#import threading
 
 def create_engine():
-    """Create a new TTS engine in its own thread"""
+    """Create a new TTS engine"""
     engine = pyttsx3.init()
-    engine.startLoop(False)  # Start non-blocking
     return engine
 
 def kill_engine(engine):
     """Clean up engine"""
     if engine:
-        engine.endLoop()
         del engine
 
 def speak_prompt(text, engine=None):
@@ -22,11 +20,11 @@ def speak_prompt(text, engine=None):
         if not engine:
             engine = create_engine()
             engine.say(text)
-            engine.iterate()
+            engine.runAndWait()  # Block until done
             kill_engine(engine)
         else:
             engine.say(text)
-            engine.iterate()
+            engine.runAndWait()  # Block until done
     except Exception as e:
         print(f"Speech error: {e}")
 
@@ -78,21 +76,21 @@ def get_yes_no_from_voice(recognizer, source):
 def create_recognizer():
     """Create a new speech recognizer in its own thread"""
     recognizer = sr.Recognizer()
-    thread = threading.Thread(target=lambda: None, daemon=True)
-    thread.start()
-    return recognizer, thread
+    #thread = threading.Thread(target=lambda: None, daemon=True)
+    #thread.start()
+    return recognizer # thread
 
-def kill_recognizer(recognizer, thread):
+def kill_recognizer(recognizer):
     """Clean up recognizer and its thread"""
-    if thread and thread.is_alive():
-        thread.join()
+    # if thread and thread.is_alive():
+    #     thread.join()
     if recognizer:
         del recognizer
 
 def get_game_settings_from_voice():
     """Get game settings through interactive voice dialog"""
     print("\nStarting game setup...")
-    recognizer, rec_thread = create_recognizer()
+    recognizer= create_recognizer()
     settings = {}
     
     # Create engine
@@ -157,6 +155,6 @@ def get_game_settings_from_voice():
         finally:
             # Clean up both engine and recognizer
             kill_engine(setup_engine)
-            kill_recognizer(recognizer, rec_thread)
+            kill_recognizer(recognizer)
     
     return None 

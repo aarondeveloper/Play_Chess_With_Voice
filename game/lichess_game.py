@@ -91,7 +91,7 @@ class LichessVoiceGame:
             return
             
         print("Starting to play...")
-        #time.sleep(0.5)
+        time.sleep(0.5)
         
         # Stream game state
         for event in self.client.board.stream_game_state(game_id):
