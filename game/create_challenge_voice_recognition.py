@@ -16,17 +16,23 @@ def kill_engine(engine):
 def speak_prompt(text, engine=None):
     """Speak a prompt to the user"""
     print(f"\nPrompt: {text}")  # Debug output
+    local_engine = None
     try:
         if not engine:
-            engine = create_engine()
-            engine.say(text)
-            engine.runAndWait()  # Block until done
-            kill_engine(engine)
+            print("Creating new engine")
+            local_engine = create_engine()
+            local_engine.say(text)
+            local_engine.runAndWait()
+            kill_engine(local_engine)
         else:
+            print("Using existing engine")
             engine.say(text)
-            engine.runAndWait()  # Block until done
+            engine.runAndWait()
+            print("Finished speaking prompt")  # Debug to show we completed
     except Exception as e:
         print(f"Speech error: {e}")
+        if local_engine:
+            kill_engine(local_engine)
 
 def get_number_from_voice(recognizer, source, engine=None, max_retries=3):
     """Get a number from voice input with retries"""
@@ -137,6 +143,7 @@ def get_game_settings_from_voice():
             # Get challenge type
             speak_prompt("Is this an open challenge? Say yes for open, no for specific player", setup_engine)
             is_open = get_yes_no_from_voice(recognizer, source)
+            print(f"Is open: {is_open}")
             settings['is_open'] = is_open
             
             if not is_open:

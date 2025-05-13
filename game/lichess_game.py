@@ -56,17 +56,34 @@ class LichessVoiceGame:
         """Create an open challenge on Lichess"""
         print("\nCreating an open challenge...")
         self.game_manager.speak_status("Creating open challenge")
-        challenge = self.client.board.seek(
-            time=settings.get('time_control', 5),
-            increment=settings.get('increment', 3),
-            rated=settings.get('rated', False),
-            variant='standard',
-            color='random'
-        )
-        # Return first game ID from seek response
-        for event in challenge:
-            if event.get('type') == 'gameStart':
-                return event['game']['id']
+        print("Finished speaking status")
+        try:
+            # Create the seek - this returns how long it took
+            seek_time = self.client.board.seek(
+                time=settings.get('time_control', 5),
+                increment=settings.get('increment', 3),
+                rated=settings.get('rated', False),
+                variant='standard',
+                color='random'
+            )
+            print(f"Seek created in {seek_time} seconds")
+            
+            # Now listen for someone to accept
+            print("Waiting for opponent...")
+            for event in self.client.board.stream_incoming_events():
+                print(f"Event received: {event}")
+                if event.get('type') == 'gameStart':
+                    print("Game starting!")
+                    return event['game']['id']
+        except KeyboardInterrupt:
+            print("\nCancelling seek...")
+            self.client.board.cancel_seek()  # Cancel the seek
+            return None
+        except Exception as e:
+            print(f"Error in seek: {e}")
+            self.client.board.cancel_seek()  # Cancel on error too
+            return None
+        
         return None
 
     def _create_direct_challenge(self, settings):
