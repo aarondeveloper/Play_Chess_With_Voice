@@ -14,7 +14,7 @@ class GameManager:
         self.speech_thread = None
         self.is_speaking = False
         
-        # Start speech processing thread
+        # Start speech processing thread with fresh engine
         self.start_speech_thread()
 
     def start_speech_thread(self):

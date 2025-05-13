@@ -5,8 +5,11 @@ import os
 import berserk
 from dotenv import load_dotenv
 from .chess_voice_recognition import get_chess_move_from_voice
+from .create_challenge_voice_recognition import get_game_settings_from_voice
 from .game_manager import GameManager
 import time
+import speech_recognition as sr
+from .would_you_like_to_play_voice_recognition import ask_to_play
 
 # Load environment variables
 load_dotenv()
@@ -20,33 +23,83 @@ class LichessVoiceGame:
         self.client = berserk.Client(self.session)
         self.game_manager = GameManager(self.client)
         
-    def create_game(self, max_retries=3):
-        """Create a new game against the configured opponent"""
+    def create_game_with_settings(self, settings, max_retries=3):
+        """Create a new game with specified settings"""
+        if not settings:
+            return None
+        
         for attempt in range(max_retries):
             try:
-                print(f"Creating challenge against {OPPONENT}...")
-                challenge = self.client.challenges.create(
-                    username=OPPONENT,
-                    rated=False,
-                    clock_limit=300,
-                    clock_increment=3
-                )
-                
-                game_id = challenge['id']
-                print(f"Challenge created! Game ID: {game_id}")
-                return game_id
+                # Handle open challenges
+                if settings.get('is_open', False):
+                    return self._create_open_challenge(settings)
+                # Handle direct challenges
+                else:
+                    return self._create_direct_challenge(settings)
                 
             except berserk.exceptions.ResponseError as e:
                 if "Too Many Requests" in str(e):
                     wait_time = 30 if attempt == 0 else 60
                     print(f"Rate limited. Waiting {wait_time} seconds...")
+                    self.game_manager.speak_status("Rate limited. Please wait.")
                     time.sleep(wait_time)
                     continue
                 print(f"Failed to create game: {e}")
+                self.game_manager.speak_status("Failed to create game")
                 return None
-                
+        
         print("Max retries reached. Please try again later.")
+        self.game_manager.speak_status("Failed to create game after multiple attempts")
         return None
+
+    def _create_open_challenge(self, settings):
+        """Create an open challenge on Lichess"""
+        print("\nCreating an open challenge...")
+        self.game_manager.speak_status("Creating open challenge")
+        print("Finished speaking status")
+        try:
+            # Create the seek - this returns how long it took
+            seek_time = self.client.board.seek(
+                time=settings.get('time_control', 5),
+                increment=settings.get('increment', 3),
+                rated=settings.get('rated', False),
+                variant='standard',
+                color='random'
+            )
+            print(f"Seek created in {seek_time} seconds")
+            
+            # Now listen for someone to accept
+            print("Waiting for opponent...")
+            for event in self.client.board.stream_incoming_events():
+                print(f"Event received: {event}")
+                if event.get('type') == 'gameStart':
+                    print("Game starting!")
+                    return event['game']['id']
+        except KeyboardInterrupt:
+            print("\nCancelling seek...")
+            self.client.board.cancel_seek()  # Cancel the seek
+            return None
+        except Exception as e:
+            print(f"Error in seek: {e}")
+            self.client.board.cancel_seek()  # Cancel on error too
+            return None
+        
+        return None
+
+    def _create_direct_challenge(self, settings):
+        """Create a direct challenge to a specific player"""
+        opponent = settings.get('opponent', OPPONENT)
+        print(f"\nCreating challenge against {opponent}...")
+        self.game_manager.speak_status(f"Challenging {opponent}")
+        challenge = self.client.challenges.create(
+            username=opponent,
+            rated=settings.get('rated', False),
+            clock_limit=settings.get('time_control', 5) * 60,  # Convert to seconds
+            clock_increment=settings.get('increment', 3),
+            variant='standard',
+            color='random'
+        )
+        return challenge['id']
             
     def play_game(self, game_id):
         """Play a game using voice commands"""
@@ -55,7 +108,7 @@ class LichessVoiceGame:
             return
             
         print("Starting to play...")
-        #time.sleep(0.5)
+        time.sleep(0.5)
         
         # Stream game state
         for event in self.client.board.stream_game_state(game_id):
@@ -82,17 +135,38 @@ class LichessVoiceGame:
                 time.sleep(0.5)
 
 def main():
-    """Main function to start and play a game"""
+    """Main function to start and play games"""
     game = LichessVoiceGame()
     
-    # Create a new game
-    game_id = game.create_game()
-    if not game_id:
-        print("Failed to create game. Exiting.")
-        return
+    while True:
+        print("\n=== CHESS VOICE COMMAND CENTER ===")
         
-    # Play the game
-    game.play_game(game_id)
+        # Ask if they want to play
+        want_to_play = ask_to_play(game.game_manager)
+        if want_to_play is False:  # They said no
+            break
+        elif want_to_play is None:  # Unclear response
+            continue
+        
+        print("Starting game setup...")
+        
+        # Get game settings through voice dialog
+        settings = get_game_settings_from_voice()
+        if not settings:
+            print("Failed to get game settings. Try again.")
+            continue
+            
+        # Create a new game with settings
+        game_id = game.create_game_with_settings(settings)
+        if not game_id:
+            print("Failed to create game. Try again.")
+            continue
+        
+        # Play the game
+        game.play_game(game_id)
+        
+        print("\nGame finished. Starting new game setup...")
+        time.sleep(1)  # Brief pause before next game setup
 
 if __name__ == "__main__":
     main() 
