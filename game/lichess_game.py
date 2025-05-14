@@ -136,10 +136,12 @@ class LichessVoiceGame:
                 time.sleep(0.5)
 
 def main():
-    """Main function to start and play games"""
-    game = LichessVoiceGame()
+    # """Main function to start and play games"""
+    # game = LichessVoiceGame()
     
     while True:
+        """Main function to start and play games"""
+        game = LichessVoiceGame()
         print("\n=== CHESS VOICE COMMAND CENTER ===")
         
         # Ask if they want to play
