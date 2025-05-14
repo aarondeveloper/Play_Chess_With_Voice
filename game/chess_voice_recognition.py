@@ -49,6 +49,15 @@ def process_chess_command(text):
     if 'exit' in text.lower() or 'quit' in text.lower():
         return "EXIT"
     
+    if "resign" in text.lower():
+        return "resign"
+    if "accept draw" in text.lower():
+        return "accept draw"
+    if "decline draw" in text.lower():
+        return "decline draw"
+    if "draw" in text.lower():
+        return "draw"
+    
     # Try to parse the move
     move = parse_chess_notation_for_lichess(text)
     if move:

@@ -1,42 +1,76 @@
 """Module for parsing game setup voice commands"""
 import speech_recognition as sr
-import pyttsx3
-#import threading
+import os
+import glob
+from gtts import gTTS
+import pygame
+import time
 
-def create_engine():
-    """Create a new TTS engine"""
-    engine = pyttsx3.init()
-    return engine
+class ChallengeTTS:
+    def __init__(self):
+        # Clean up any leftover files from previous runs
+        #self._cleanup_previous_files()
+        
+        # Initialize pygame mixer for audio playback
+        pygame.mixer.init()
+        self.count = 0
+        self.temp_files = []  # Track all created files
+        self.temp_pattern = "temp_speech_"  # Base pattern for temp files
+        self._cleanup_previous_files()
+    def _cleanup_previous_files(self):
+        """Clean up any leftover speech files from previous runs"""
+        print("\nCleaning up any leftover TTS files...")
+        
+        # Find all temp speech files in the current directory
+        for file in glob.glob(f"temp_speech_*.mp3"):
+            try:
+                if os.path.exists(file):
+                    os.remove(file)
+                    print(f"Removed leftover file: {file}")
+            except Exception as e:
+                print(f"Could not remove leftover file {file}: {e}")
+                
+        # Also check game directory
+        game_dir = os.path.dirname(os.path.abspath(__file__))
+        cwd = os.getcwd()
+        if game_dir != cwd:
+            for file in glob.glob(os.path.join(game_dir, f"{self.temp_pattern}*.mp3")):
+                try:
+                    os.remove(file)
+                    print(f"Removed leftover file: {file}")
+                except Exception as e:
+                    print(f"Could not remove leftover file {file}: {e}")
+        
+    def speak(self, text):
+        """Speak text using Google TTS and wait for completion"""
+        print(f"\nPrompt: {text}")
+        try:
+            # Create sequentially numbered temp file
+            temp_file = f"{self.temp_pattern}{self.count}.mp3"
+            self.temp_files.append(temp_file)
+            self.count += 1
+            
+            # Create MP3 file with Google TTS
+            tts = gTTS(text=text, lang='en', slow=False)
+            tts.save(temp_file)
+            
+            # Play the audio and wait for it to finish
+            pygame.mixer.music.load(temp_file)
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)
+                
+        except Exception as e:
+            print(f"Speech error: {e}")
+            
+    def cleanup(self):
+        """Just stop the audio - we'll clean files in the next run"""
+        pygame.mixer.music.stop()
+        pygame.mixer.quit()
+        print("Audio system shutdown complete")
 
-def kill_engine(engine):
-    """Clean up engine"""
-    if engine:
-        del engine
-
-def speak_prompt(text, engine=None):
-    """Speak a prompt to the user"""
-    print(f"\nPrompt: {text}")  # Debug output
-    engine = create_engine()
-    try:
-        if not engine:
-            print("Creating new engine")
-            local_engine = create_engine()
-            local_engine.say(text)
-            local_engine.runAndWait()
-            kill_engine(local_engine)
-        else:
-            print("Using existing engine")
-            engine.say(text)
-            engine.runAndWait()
-            del(engine)
-            print("Finished speaking prompt")  # Debug to show we completed
-    except Exception as e:
-        print(f"Speech error: {e}")
-        if local_engine:
-            kill_engine(local_engine)
-
-def get_number_from_voice(recognizer, source, engine=None, max_retries=3):
-    """Get a number from voice input with retries"""
+def get_number_from_voice(recognizer, source, tts):
+    """Get a number from voice input"""
     print("\nListening for number...")
     
     try:
@@ -62,107 +96,81 @@ def get_number_from_voice(recognizer, source, engine=None, max_retries=3):
                 return number_map[word]
         
         print("No number found in speech")
-        speak_prompt("Please say a number clearly", engine)
+        tts.speak("Please say a number clearly")
     except Exception as e:
         print(f"Error: {e}")
-        speak_prompt("Please try again", engine)
+        tts.speak("Please try again")
     
     return None
 
-def get_yes_no_from_voice(recognizer, source):
+def get_yes_no_from_voice(recognizer, source, tts):
     """Get yes/no from voice input"""
     try:
-        audio = recognizer.listen(source, timeout=5)
+        audio = recognizer.listen(source, timeout=7)
         text = recognizer.recognize_google(audio).lower()
         print(f"You said: {text}")
         return "yes" in text or "yeah" in text
     except Exception as e:
         print(f"Error: {e}")
-    return False
-
-def create_recognizer():
-    """Create a new speech recognizer in its own thread"""
-    recognizer = sr.Recognizer()
-    #thread = threading.Thread(target=lambda: None, daemon=True)
-    #thread.start()
-    return recognizer # thread
-
-def kill_recognizer(recognizer):
-    """Clean up recognizer and its thread"""
-    # if thread and thread.is_alive():
-    #     thread.join()
-    if recognizer:
-        del recognizer
+        tts.speak("Please try again")
+        return False
 
 def get_game_settings_from_voice():
     """Get game settings through interactive voice dialog"""
     print("\nStarting game setup...")
-    recognizer= create_recognizer()
+    recognizer = sr.Recognizer()
     settings = {}
+    tts = ChallengeTTS()
     
-    # Create engine
-    setup_engine = create_engine()
+    # Define questions
+    questions = [
+        ("How many minutes per side?", "time_control", get_number_from_voice),
+        ("Would you like this to be a rated game?", "rated", get_yes_no_from_voice),
+        ("How many seconds increment?", "increment", get_number_from_voice),
+        ("Is this an open challenge?", "is_open", get_yes_no_from_voice)
+    ]
     
     with sr.Microphone() as source:
         try:
+            # Adjust mic for ambient noise
             print("\nAdjusting for ambient noise...")
             recognizer.adjust_for_ambient_noise(source, duration=1)
             print("Noise adjustment complete")
             
-            # Get time control
-            print("\n=== Time Control Setup ===")
-            for attempt in range(3):  # Try 3 times
-                speak_prompt("How many minutes per side?", setup_engine)
-                print("Waiting for time control input...")
-                time_control = get_number_from_voice(recognizer, source)
-                if time_control is not None:
-                    break
-                print("Trying again...")
+            # Ask each question in sequence
+            for question, setting_key, get_answer_func in questions:
+                # Try up to 3 times for each question
+                for attempt in range(3):
+                    tts.speak(question)
+                    answer = get_answer_func(recognizer, source, tts)
+                    
+                    if answer is not None:
+                        settings[setting_key] = answer
+                        break
+                    
+                    if attempt < 2:
+                        tts.speak("Please try again")
+                
+                # Use defaults if all attempts fail
+                if setting_key not in settings:
+                    defaults = {"time_control": 5, "rated": False, "increment": 3, "is_open": True}
+                    settings[setting_key] = defaults[setting_key]
+                    tts.speak(f"Using default value for {setting_key}")
             
-            if time_control is None:
-                print("Using default time control")
-                speak_prompt("Could not understand time control. Using default 5 minutes", setup_engine)
-                time_control = 5
-            speak_prompt(f"You chose {time_control} minutes")
-            settings['time_control'] = time_control
-            
-            # Get rated preference
-            speak_prompt("Would you like this to be a rated game? Say yes or no", setup_engine)
-            rated = get_yes_no_from_voice(recognizer, source)
-            speak_prompt(f"You chose {'rated' if rated else 'unrated'}", setup_engine)
-            settings['rated'] = rated
-            
-            # Get increment
-            speak_prompt("How many seconds increment?", setup_engine)
-            increment = get_number_from_voice(recognizer, source, setup_engine)
-            if increment is None:
-                speak_prompt("Could not understand increment. Using default 3 seconds", setup_engine)
-                increment = 3
-            speak_prompt(f"You chose {increment} seconds increment", setup_engine)
-            settings['increment'] = increment
-            
-            # Get challenge type
-            speak_prompt("Is this an open challenge? Say yes for open, no for specific player", setup_engine)
-            is_open = get_yes_no_from_voice(recognizer, source)
-            print(f"Is open: {is_open}")
-            settings['is_open'] = is_open
-            
-            if not is_open:
-                speak_prompt("Please spell out the username of your opponent", setup_engine)
+            # Handle opponent name if not open challenge
+            if not settings.get('is_open', True):
+                tts.speak("Please spell out the username of your opponent")
                 try:
                     audio = recognizer.listen(source, timeout=10)
                     opponent = recognizer.recognize_google(audio).lower().replace(" ", "")
-                    speak_prompt(f"Challenging player: {opponent}", setup_engine)
+                    tts.speak(f"Challenging player: {opponent}")
                     settings['opponent'] = opponent
                 except Exception as e:
                     print(f"Error getting opponent: {e}")
-                    speak_prompt("Could not understand opponent name. Using default from settings", setup_engine)
+                    tts.speak("Could not understand opponent name. Using default from settings")
             
             print(f"Final settings: {settings}")
             return settings
+            
         finally:
-            # Clean up both engine and recognizer
-            kill_engine(setup_engine)
-            kill_recognizer(recognizer)
-    
-    return None 
+            tts.cleanup() 

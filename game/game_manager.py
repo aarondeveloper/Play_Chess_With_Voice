@@ -105,6 +105,45 @@ class GameManager:
         # Wait for final message to be spoken
         self.speech_queue.join()
 
+    def resign_game(self, game_id):
+        """Resign the current game"""
+        try:
+            self.client.board.resign_game(game_id)
+            self.speak_status("Resigning game")
+            return True
+        except Exception as e:
+            print(f"Error resigning: {e}")
+            return False
+
+    def send_draw(self, game_id):
+        """Handle draw offers"""
+        try:
+            self.client.board.offer_draw(game_id)
+            self.speak_status("Offering draw")
+            return True
+        except Exception as e:
+            print(f"Error with draw: {e}")
+            return False
+    def accept_draw(self, game_id):
+        """Accept draw offers"""
+        try:
+            self.client.board.offer_draw(game_id)
+            self.speak_status("Accepting draw")
+            return True
+        except Exception as e:
+            print(f"Error with draw: {e}")
+            return False
+
+    def decline_draw(self, game_id):
+        """Decline draw offers"""
+        try:
+            self.client.board.decline_draw(game_id)
+            self.speak_status("Declining draw")
+            return True
+        except Exception as e:
+            print(f"Error with draw: {e}")
+            return False
+
     def make_move(self, game_id, move_function):
         """Make a move using the provided move function"""
         print("\nYour turn! Please speak your move...")
@@ -116,8 +155,24 @@ class GameManager:
                     print("Couldn't understand the move. Please try again.")
                     continue
                     
-                if move == "EXIT":
+                elif move == "EXIT":
                     print("Exiting game...")
+                    return False
+                
+                elif move == "resign":
+                    self.resign_game(game_id)
+                    return False
+                
+                elif move == "draw":
+                    self.send_draw(game_id)
+                    return False
+                
+                elif move == "accept draw":
+                    self.accept_draw(game_id)
+                    return False
+                
+                elif move == "decline draw":
+                    self.decline_draw(game_id)
                     return False
                 
                 # Try to make the move
