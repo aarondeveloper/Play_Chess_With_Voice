@@ -113,6 +113,7 @@ class LichessVoiceGame:
         # Stream game state
         for event in self.client.board.stream_game_state(game_id):
             # Update game state and get last move or game end info
+            print(f"Game State Event: {event}")
             result = self.game_manager.state.update_from_event(event)
             
             # Process opponent's move if any
@@ -135,10 +136,12 @@ class LichessVoiceGame:
                 time.sleep(0.5)
 
 def main():
-    """Main function to start and play games"""
-    game = LichessVoiceGame()
+    # """Main function to start and play games"""
+    # game = LichessVoiceGame()
     
     while True:
+        """Main function to start and play games"""
+        game = LichessVoiceGame()
         print("\n=== CHESS VOICE COMMAND CENTER ===")
         
         # Ask if they want to play

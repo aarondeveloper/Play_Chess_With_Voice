@@ -26,3 +26,6 @@ var/
 # Virtual Environment
 venv/
 ENV/ 
+
+# Audio files
+*.mp3
