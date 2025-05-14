@@ -54,6 +54,7 @@ class GameManager:
         print(f"\nWaiting for opponent to accept game {game_id}...")
         
         for event in self.client.board.stream_incoming_events():
+            print(f"Incoming Event: {event}")
             if event['type'] == 'gameStart' and event['game']['id'] == game_id:
                 color = event['game']['color']
                 self.state.set_color(color)

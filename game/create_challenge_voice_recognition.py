@@ -16,7 +16,7 @@ def kill_engine(engine):
 def speak_prompt(text, engine=None):
     """Speak a prompt to the user"""
     print(f"\nPrompt: {text}")  # Debug output
-    local_engine = None
+    engine = create_engine()
     try:
         if not engine:
             print("Creating new engine")
@@ -28,6 +28,7 @@ def speak_prompt(text, engine=None):
             print("Using existing engine")
             engine.say(text)
             engine.runAndWait()
+            del(engine)
             print("Finished speaking prompt")  # Debug to show we completed
     except Exception as e:
         print(f"Speech error: {e}")
@@ -113,7 +114,7 @@ def get_game_settings_from_voice():
             for attempt in range(3):  # Try 3 times
                 speak_prompt("How many minutes per side?", setup_engine)
                 print("Waiting for time control input...")
-                time_control = get_number_from_voice(recognizer, source, setup_engine)
+                time_control = get_number_from_voice(recognizer, source)
                 if time_control is not None:
                     break
                 print("Trying again...")
@@ -122,7 +123,7 @@ def get_game_settings_from_voice():
                 print("Using default time control")
                 speak_prompt("Could not understand time control. Using default 5 minutes", setup_engine)
                 time_control = 5
-            speak_prompt(f"You chose {time_control} minutes", setup_engine)
+            speak_prompt(f"You chose {time_control} minutes")
             settings['time_control'] = time_control
             
             # Get rated preference

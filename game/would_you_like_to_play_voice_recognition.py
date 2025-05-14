@@ -66,3 +66,4 @@ def ask_to_play(game_manager):
     finally:
         kill_engine(engine)
         kill_recognizer(recognizer) 
+        print("Engine and recognizer killed")
