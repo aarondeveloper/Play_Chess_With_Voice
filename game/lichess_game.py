@@ -10,6 +10,7 @@ from .game_manager import GameManager
 import time
 import speech_recognition as sr
 from .would_you_like_to_play_voice_recognition import ask_to_play
+import threading
 
 # Load environment variables
 load_dotenv()
@@ -103,45 +104,71 @@ class LichessVoiceGame:
             
     def play_game(self, game_id):
         """Play a game using voice commands"""
-        # Wait for game to start
+        print("=== Starting play_game ===")
         if not self.game_manager.wait_for_game_start(game_id):
+            print("Game didn't start")
             return
             
         print("Starting to play...")
         time.sleep(0.5)
         
-        # Stream game state
-        for event in self.client.board.stream_game_state(game_id):
-            # Enhanced debugging for events
-            print("\n========== EVENT DETAILS ==========")
-            print(f"Event type: {event.get('type')}")
-            print(f"Full event structure: {event}")
-            
-            if 'drawOffer' in event:
-                print(f"DRAW OFFER DETECTED: {event['drawOffer']}")
-                print(f"Current player color: {self.game_manager.state.my_color}")
-            
-            # Update game state and get last move or game end info
-            result = self.game_manager.state.update_from_event(event)
-            
-            # Process opponent's move if any
-            if isinstance(result, tuple):
-                if result[0] in ['checkmate', 'resign', 'draw']:
-                    # Handle game end
-                    self.game_manager.process_game_end(result[0], result[1])
-                    time.sleep(2)  # Give time for final announcement
-                    print("Game finished, exiting...")
-                    return  # Exit the game loop completely
+        move_thread = None
+        
+        try:
+            for event in self.client.board.stream_game_state(game_id):
+                print("\n========== EVENT DETAILS ==========")
+                print(f"Event type: {event.get('type')}")
+                print(f"Full event structure: {event}")
+                
+                result = self.game_manager.state.update_from_event(event)
+                print(f"Update result: {result}")
+                
+                if isinstance(result, tuple):
+                    if result[0] in ['checkmate', 'resign', 'draw']:
+                        print("=== GAME END DETECTED ===")
+                        print(f"End type: {result[0]}")
+                        print(f"Winner: {result[1]}")
+                        
+                        print("Starting thread cleanup...")
+                        self.game_manager.stop_move_thread()
+                        print("Stop thread flag set")
+                        
+                        if move_thread and move_thread.is_alive():
+                            print("Thread is alive, joining...")
+                            move_thread.join(timeout=1.0)
+                            print("Thread joined")
+                        else:
+                            print("No active thread to clean up")
+                        
+                        self.game_manager.process_game_end(result[0], result[1])
+                        print("Game end processed")
+                        time.sleep(2)
+                        print("=== EXITING GAME ===")
+                        return
+                    else:
+                        self.game_manager.announce_move(result)
+                        time.sleep(0.5)
+                
+                # Start or stop move thread based on turn
+                if self.game_manager.state.is_my_turn:
+                    if move_thread is None or not move_thread.is_alive():
+                        self.game_manager.move_thread_active = True
+                        move_thread = threading.Thread(
+                            target=self.game_manager.make_move,
+                            args=(game_id, get_chess_move_from_voice)
+                        )
+                        move_thread.start()
                 else:
-                    # Normal move
-                    self.game_manager.announce_move(result)
-                    time.sleep(0.5)
-            
-            # Make our move if it's our turn
-            if self.game_manager.state.is_my_turn:
-                if not self.game_manager.make_move(game_id, get_chess_move_from_voice):
-                    return
-                time.sleep(0.5)
+                    # Stop move thread if it's not our turn
+                    if move_thread and move_thread.is_alive():
+                        self.game_manager.stop_move_thread()
+                        move_thread.join(timeout=1.0)
+                        move_thread = None
+        finally:
+            print("Stopping move thread")
+            self.game_manager.stop_move_thread()
+            if move_thread and move_thread.is_alive():
+                move_thread.join(timeout=1.0)
 
 def main(debug=False):
     # """Main function to start and play games"""

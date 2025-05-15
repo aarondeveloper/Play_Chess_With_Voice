@@ -13,6 +13,7 @@ class GameManager:
         self.speech_queue = queue.Queue()
         self.speech_thread = None
         self.is_speaking = False
+        self.move_thread_active = False
         
         # Start speech processing thread with fresh engine
         self.start_speech_thread()
@@ -103,7 +104,7 @@ class GameManager:
         print(f"\n=== GAME OVER ===\n{message}")
         self.speak(message)
         # Wait for final message to be spoken
-        self.speech_queue.join()
+        #self.speech_queue.join()
 
     def resign_game(self, game_id):
         """Resign the current game"""
@@ -144,45 +145,70 @@ class GameManager:
             print(f"Error with draw: {e}")
             return False
 
+    def handle_command(self, game_id, command):
+        """Handle non-move commands like resign and draw"""
+        if not command:
+            return False
+        
+        if command == "EXIT":
+            print("Exiting game...")
+            self.resign_game(game_id)
+            return True
+        
+        elif command == "resign":
+            self.resign_game(game_id)
+            return True
+        
+        elif command == "draw":
+            self.send_draw(game_id)
+            return False  # Continue listening after draw offer
+        
+        elif command == "accept draw":
+            self.accept_draw(game_id)
+            return False  # Continue listening if draw isn't accepted
+        
+        elif command == "decline draw":
+            self.decline_draw(game_id)
+            return False  # Continue listening after declining
+        
+        return None  # Not a command
+
     def make_move(self, game_id, move_function):
         """Make a move using the provided move function"""
         print("\nYour turn! Please speak your move...")
-        while True:
+        while self.move_thread_active:
+            if not self.move_thread_active:
+                return False
+            
             try:
                 move = move_function()
                 
+                if not self.move_thread_active:
+                    return False
+                    
                 if not move:
                     print("Couldn't understand the move. Please try again.")
                     continue
+                
+                # First check if it's a command
+                command_result = self.handle_command(game_id, move)
+                if command_result is not None:
+                    return command_result
+                
+                # If not a command, try to make the move
+                if not self.move_thread_active:
+                    return False
                     
-                elif move == "EXIT":
-                    print("Exiting game...")
-                    return False
-                
-                elif move == "resign":
-                    self.resign_game(game_id)
-                    return False
-                
-                elif move == "draw":
-                    self.send_draw(game_id)
-                    return False
-                
-                elif move == "accept draw":
-                    self.accept_draw(game_id)
-                    return False
-                
-                elif move == "decline draw":
-                    self.decline_draw(game_id)
-                    return False
-                
-                # Try to make the move
                 self.client.board.make_move(game_id, move)
                 print(f"Move {move} sent successfully!")
                 return True
                 
-            except berserk.exceptions.ResponseError as e:
-                print(f"Invalid move: {e}")
-                print("Please try another move.")
             except Exception as e:
+                if not self.move_thread_active:
+                    return False
                 print(f"Error making move: {e}")
-                print("Please try again.") 
+                print("Please try again.")
+
+    def stop_move_thread(self):
+        """Stop the move input thread"""
+        self.move_thread_active = False 
