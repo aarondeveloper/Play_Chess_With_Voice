@@ -112,8 +112,16 @@ class LichessVoiceGame:
         
         # Stream game state
         for event in self.client.board.stream_game_state(game_id):
+            # Enhanced debugging for events
+            print("\n========== EVENT DETAILS ==========")
+            print(f"Event type: {event.get('type')}")
+            print(f"Full event structure: {event}")
+            
+            if 'drawOffer' in event:
+                print(f"DRAW OFFER DETECTED: {event['drawOffer']}")
+                print(f"Current player color: {self.game_manager.state.my_color}")
+            
             # Update game state and get last move or game end info
-            print(f"Game State Event: {event}")
             result = self.game_manager.state.update_from_event(event)
             
             # Process opponent's move if any
@@ -135,7 +143,7 @@ class LichessVoiceGame:
                     return
                 time.sleep(0.5)
 
-def main():
+def main(debug=False):
     # """Main function to start and play games"""
     # game = LichessVoiceGame()
     
@@ -152,15 +160,25 @@ def main():
             continue
         
         print("Starting game setup...")
-        
+        game_id = None
         # Get game settings through voice dialog
-        settings = get_game_settings_from_voice()
-        if not settings:
-            print("Failed to get game settings. Try again.")
-            continue
+        if debug:
+            settings = get_game_settings_from_voice()
+            game_id = game.create_game_with_settings(settings)
+        else:
+            challenge = game.client.challenges.create(
+            username="Iamthedon",
+            rated=False,
+            clock_limit=5 * 60,  # Convert to seconds
+            clock_increment=3,
+            variant='standard',
+            color='random'
+        )
+            game_id = challenge['id']
+        # if not settings:
+        #     print("Failed to get game settings. Try again.")
+        #     continue
             
-        # Create a new game with settings
-        game_id = game.create_game_with_settings(settings)
         if not game_id:
             print("Failed to create game. Try again.")
             continue
