@@ -2,9 +2,11 @@
 import berserk
 import time
 from .game_state import GameState
-import pyttsx3
-import queue
 import threading
+import queue
+import os
+from gtts import gTTS
+import pygame
 
 class GameManager:
     def __init__(self, client):
@@ -14,28 +16,75 @@ class GameManager:
         self.speech_thread = None
         self.is_speaking = False
         self.move_thread_active = False
+        self.temp_files = []
+        self.temp_count = 0
         
-        # Start speech processing thread with fresh engine
+        # Initialize pygame mixer for audio
+        pygame.mixer.init()
+        
+        # Start speech processing thread
         self.start_speech_thread()
+        
+        # Clean up any leftover temp files
+        self._cleanup_temp_files()
+
+    def _cleanup_temp_files(self):
+        """Clean up any leftover speech files from previous runs"""
+        for file in os.listdir():
+            if file.startswith("gm_speech_") and file.endswith(".mp3"):
+                try:
+                    os.remove(file)
+                    print(f"Removed leftover file: {file}")
+                except Exception as e:
+                    print(f"Could not remove leftover file {file}: {e}")
 
     def start_speech_thread(self):
         """Start the background speech thread"""
         def speech_worker():
-            engine = pyttsx3.init()
             while True:
                 try:
                     text = self.speech_queue.get()
                     if text is None:  # Shutdown signal
                         break
-                    engine.say(text)
-                    engine.runAndWait()
+                    
+                    # Generate a unique temp file name
+                    temp_file = f"gm_speech_{self.temp_count}.mp3"
+                    self.temp_count += 1
+                    self.temp_files.append(temp_file)
+                    
+                    print(f"Creating speech file: {temp_file} with text: {text}")
+                    
+                    # Create and save the audio file
+                    tts = gTTS(text=text, lang='en', slow=False)
+                    tts.save(temp_file)
+                    
+                    # Ensure mixer is initialized
+                    if not pygame.mixer.get_init():
+                        print("Re-initializing pygame mixer")
+                        pygame.mixer.init()
+                    
+                    # Play the audio with better error handling
+                    try:
+                        pygame.mixer.music.load(temp_file)
+                        pygame.mixer.music.play()
+                        print(f"Playing audio: {temp_file}")
+                        
+                        # Wait for playback to complete
+                        while pygame.mixer.music.get_busy():
+                            pygame.time.Clock().tick(10)
+                        
+                        print(f"Finished playing: {temp_file}")
+                    except Exception as e:
+                        print(f"Pygame audio error: {e}")
+                    
                 except Exception as e:
-                    print(f"Speech error: {e}")
+                    print(f"Speech worker error: {e}")
                 finally:
                     self.speech_queue.task_done()
         
         self.speech_thread = threading.Thread(target=speech_worker, daemon=True)
         self.speech_thread.start()
+        print("Speech thread started")
 
     def speak(self, text):
         """Add text to speech queue"""
@@ -212,3 +261,22 @@ class GameManager:
     def stop_move_thread(self):
         """Stop the move input thread"""
         self.move_thread_active = False 
+
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        # Signal speech thread to stop
+        if hasattr(self, 'speech_queue'):
+            self.speech_queue.put(None)
+        
+        # Clean up temp files
+        if hasattr(self, 'temp_files'):
+            for file in self.temp_files:
+                try:
+                    if os.path.exists(file):
+                        os.remove(file)
+                except Exception as e:
+                    print(f"Error removing temp file: {e}")
+        
+        # Stop pygame mixer
+        if pygame.mixer.get_init():
+            pygame.mixer.quit() 
