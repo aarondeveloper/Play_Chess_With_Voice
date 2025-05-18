@@ -70,8 +70,8 @@ class GameState:
             
             # Update game status and check for end conditions
             self.status = event.get('status')
-            print(f"the event {event}")
-            print(f"Game status: {self.status}")
+            #print(f"the event {event}")
+            #print(f"Game status: {self.status}")
             game_end = self.check_game_end(event)
             if game_end:
                 return game_end
