@@ -1,6 +1,6 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO
-from game.lichess_game import LichessVoiceGame
+from game.lichess_game import LichessVoiceGame, main
 import os
 from dotenv import load_dotenv
 
@@ -18,7 +18,7 @@ def index():
 def handle_start_game():
     global game_instance
     game_instance = LichessVoiceGame()
-    game_instance.main(debug=False)
+    main(debug=False)
     return {'status': 'Game started'}
 
 if __name__ == '__main__':
