@@ -4,12 +4,11 @@ Module for managing a Lichess game with voice control.
 import os
 import berserk
 from dotenv import load_dotenv
-from .chess_voice_recognition import get_chess_move_from_voice
-from .create_challenge_voice_recognition import get_game_settings_from_voice
+from .deepgram_voice_recognition import get_chess_move_from_voice
+from .deepgram_challenge_voice_recognition import get_game_settings_from_voice
 from .game_manager import GameManager
 import time
-import speech_recognition as sr
-from .would_you_like_to_play_voice_recognition import ask_to_play
+from .deepgram_would_you_like_to_play_voice_recognition import ask_to_play
 import threading
 
 # Load environment variables

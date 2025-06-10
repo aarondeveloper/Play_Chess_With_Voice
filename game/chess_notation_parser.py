@@ -1,6 +1,7 @@
 """
 Module for parsing chess notation from spoken text.
 """
+import re
 
 def parse_chess_notation_for_lichess(text):
     """Convert spoken chess notation to UCI format for Lichess API."""
@@ -31,7 +32,7 @@ def parse_chess_notation_for_lichess(text):
         'h': 'h', 'hotel': 'h', 'aitch': 'h'
     }
     
-    # Dictionary for ranks (numbers)
+    # Dictionary for ranks (numbers) - expanded for Deepgram word output
     ranks = {
         'one': '1', '1': '1', 'won': '1',
         'two': '2', '2': '2', 'to': '2', 'too': '2',
@@ -43,24 +44,49 @@ def parse_chess_notation_for_lichess(text):
         'eight': '8', '8': '8', 'ate': '8'
     }
     
-    # Split the text into words
+    # Clean punctuation from text and split into words
     words = text.split()
-    print(f"DEBUG: Words: {words}")
+    cleaned_words = []
+    
+    for word in words:
+        # Remove punctuation from each word
+        cleaned_word = re.sub(r'[^\w]', '', word)
+        if cleaned_word:  # Only add non-empty words
+            cleaned_words.append(cleaned_word)
+    
+    print(f"DEBUG: Original words: {words}")
+    print(f"DEBUG: Cleaned words: {cleaned_words}")
     
     # Find any two squares in the command
     squares = []
     
-    for word in words:
+    i = 0
+    while i < len(cleaned_words):
+        word = cleaned_words[i]
+        
         # Check for combined squares like "f5"
         if len(word) == 2 and word[0] in files and word[1] in ranks:
-            squares.append((word[0], word[1]))
+            file_letter = files[word[0]]
+            rank_number = ranks[word[1]]
+            squares.append((file_letter, rank_number))
+            i += 1
             continue
             
-        # Check for separated squares like "f" and "5"
+        # Check for separated squares like "f" and "5" or "e" and "two"
         if word in files:
-            next_idx = words.index(word) + 1
-            if next_idx < len(words) and words[next_idx] in ranks:
-                squares.append((word, words[next_idx]))
+            file_letter = files[word]
+            # Look for the rank in the next word
+            if i + 1 < len(cleaned_words):
+                next_word = cleaned_words[i + 1]
+                if next_word in ranks:
+                    rank_number = ranks[next_word]
+                    squares.append((file_letter, rank_number))
+                    i += 2  # Skip both words since we used them
+                    continue
+        
+        i += 1
+    
+    print(f"DEBUG: Found squares: {squares}")
     
     # If we found two squares, create the UCI move
     if len(squares) >= 2:
@@ -76,8 +102,8 @@ def parse_chess_notation_for_lichess(text):
         return move
     
     # Handle castling separately
-    if "castle" in words or "castles" in words or "castling" in words:
-        is_queenside = any(word in words for word in ["queen", "queenside", "long", "queens"])
+    if any(word in cleaned_words for word in ["castle", "castles", "castling"]):
+        is_queenside = any(word in cleaned_words for word in ["queen", "queenside", "long", "queens"])
         move = "e1c1" if is_queenside else "e1g1"
         print(f"DEBUG: Parsed as '{move}' using pattern 'castle'")
         return move
