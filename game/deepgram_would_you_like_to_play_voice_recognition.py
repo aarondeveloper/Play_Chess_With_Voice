@@ -20,8 +20,8 @@ def ask_to_play(game_manager=None):
         print("\nSay 'yes' to play or 'no' to quit")
         
         try:
-            # Listen for response using Deepgram Speech
-            response = tts.recognize_speech()
+            # Listen for response using Deepgram Speech (shorter timeout)
+            response = tts.recognize_speech(timeout=3)
             if not response:
                 tts.speak("Please say yes or no clearly")
                 return None
