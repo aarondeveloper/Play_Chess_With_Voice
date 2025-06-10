@@ -53,7 +53,9 @@ def parse_voice_to_san(text):
         'rook': 'R',
         'bishop': 'B',
         'knight': 'N',
-        'pawn': ''  # Pawns don't have a letter in SAN
+        'night': 'N',
+        'pawn': '',  # Pawns don't have a letter in SAN,
+        'pon': ''
     }
     
     # Handle castling first
@@ -63,7 +65,88 @@ def parse_voice_to_san(text):
         print(f"DEBUG SAN: Parsed as castling: '{san_move}'")
         return san_move
     
-    # Look for piece type
+    # Special handling for pawn captures with patterns like:
+    # "pawn from h takes g5" or "h pawn takes g5"
+    if "pawn" in cleaned_words and any(capture_word in cleaned_words for capture_word in ["takes", "captures", "x"]):
+        print("DEBUG SAN: Detected pawn capture pattern")
+        
+        # Look for source file patterns
+        pawn_index = cleaned_words.index("pawn")
+        capture_index = -1
+        for i, word in enumerate(cleaned_words):
+            if word in ["takes", "captures", "x"]:
+                capture_index = i
+                break
+        
+        source_file = None
+        
+        # Pattern 1: "pawn from h takes g5"
+        if "from" in cleaned_words:
+            from_index = cleaned_words.index("from")
+            if from_index + 1 < len(cleaned_words) and cleaned_words[from_index + 1] in files:
+                source_file = files[cleaned_words[from_index + 1]]
+                print(f"DEBUG SAN: Found pawn source file from 'from' pattern: {source_file}")
+        
+        # Pattern 2: "h pawn takes g5" - file letter before "pawn"
+        elif pawn_index > 0 and cleaned_words[pawn_index - 1] in files:
+            source_file = files[cleaned_words[pawn_index - 1]]
+            print(f"DEBUG SAN: Found pawn source file before 'pawn': {source_file}")
+        
+        # Pattern 3: Look for a file letter anywhere before the capture word
+        if not source_file and capture_index > 0:
+            for i in range(capture_index):
+                if cleaned_words[i] in files:
+                    source_file = files[cleaned_words[i]]
+                    print(f"DEBUG SAN: Found pawn source file before capture: {source_file}")
+                    break
+        
+        # Find target square after capture word
+        target_square = None
+        if capture_index >= 0:
+            for i in range(capture_index + 1, len(cleaned_words)):
+                word = cleaned_words[i]
+                # Look for file + rank combination
+                if word in files and i + 1 < len(cleaned_words) and cleaned_words[i + 1] in ranks:
+                    target_square = files[word] + ranks[cleaned_words[i + 1]]
+                    print(f"DEBUG SAN: Found pawn target square: {target_square}")
+                    break
+                # Check for combined square like "g5"
+                elif len(word) == 2 and word[0] in files and word[1] in ranks:
+                    target_square = files[word[0]] + ranks[word[1]]
+                    print(f"DEBUG SAN: Found pawn combined target square: {target_square}")
+                    break
+        
+        # Check for promotion in pawn capture
+        promotion = None
+        if "promote" in cleaned_words or "promotes" in cleaned_words:
+            promote_index = -1
+            for i, word in enumerate(cleaned_words):
+                if word in ["promote", "promotes"]:
+                    promote_index = i
+                    break
+            
+            if promote_index >= 0:
+                # Look for the promotion piece after "promote", skipping "to" if present
+                j = promote_index + 1
+                while j < len(cleaned_words) and cleaned_words[j] == "to":
+                    j += 1
+                
+                if j < len(cleaned_words) and cleaned_words[j] in ["queen", "rook", "bishop", "knight", "night"]:
+                    promotion_map = {"queen": "Q", "rook": "R", "bishop": "B", "knight": "N", "night": "N"}
+                    promotion = promotion_map[cleaned_words[j]]
+                    print(f"DEBUG SAN: Found pawn capture promotion: {promotion}")
+        
+        # Build pawn capture SAN
+        if source_file and target_square:
+            san_move = source_file + "x" + target_square
+            if promotion:
+                san_move += "=" + promotion
+            print(f"DEBUG SAN: Built pawn capture SAN: '{san_move}'")
+            return san_move
+        else:
+            print(f"DEBUG SAN: Incomplete pawn capture - source_file: {source_file}, target_square: {target_square}")
+    
+    # Look for piece type (non-pawn pieces or non-capture pawn moves)
     piece_type = None
     capture = False
     target_square = None
@@ -101,8 +184,8 @@ def parse_voice_to_san(text):
             while j < len(cleaned_words) and cleaned_words[j] == "to":
                 j += 1
             
-            if j < len(cleaned_words) and cleaned_words[j] in ["queen", "rook", "bishop", "knight"]:
-                promotion_map = {"queen": "Q", "rook": "R", "bishop": "B", "knight": "N"}
+            if j < len(cleaned_words) and cleaned_words[j] in ["queen", "rook", "bishop", "knight", "night"]:
+                promotion_map = {"queen": "Q", "rook": "R", "bishop": "B", "knight": "N", "night": "N"}
                 promotion = promotion_map[cleaned_words[j]]
                 print(f"DEBUG SAN: Found promotion: {promotion}")
                 i = j + 1  # Skip to after the promotion piece
@@ -159,6 +242,12 @@ def parse_voice_to_san(text):
     # Add piece (empty for pawns)
     if piece_type is not None:
         san_move += piece_type
+    
+    # Special handling for pawn captures: if it's a pawn capture but no from_file specified,
+    # this is an error condition for captures
+    if piece_type == '' and capture and not from_file:
+        print("DEBUG SAN: ERROR - Pawn capture requires source file specification")
+        return None
     
     # Add disambiguation
     if from_file:
