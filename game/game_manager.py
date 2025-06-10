@@ -121,9 +121,9 @@ class GameManager:
         if move_info and move_info[0] and move_info[1]:
             uci_move, san_move = move_info
             print("\n=== OPPONENT'S MOVE ===")
-            
+            print(f"Move: {move_info}")
             # Format the move for speech
-            speech_text = san_move.replace("N", "Knight ")
+            speech_text = san_move.replace("N", "night ") #N is knight, but we say night gTTS SUCKS LOL
             speech_text = speech_text.replace("B", "Bishop ")
             speech_text = speech_text.replace("R", "Rook ")
             speech_text = speech_text.replace("Q", "Queen ")
