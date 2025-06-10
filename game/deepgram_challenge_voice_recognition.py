@@ -187,7 +187,9 @@ def get_number_from_voice(tts):
             return None
             
         # Try to extract number
-        words = text.split()
+        if '.' in text:
+            text = text.replace('.', '')
+        words = text.lower().split()
         for word in words:
             if word.isdigit():
                 print(f"Found number: {word}")
