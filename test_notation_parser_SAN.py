@@ -47,26 +47,15 @@ def get_voice_move_with_audio_capture(board):
         if "undo" in voice_text.lower() or "take back" in voice_text.lower():
             return "UNDO", None
         
-        # Step 2: Convert voice text to SAN notation  
-        from game.chess_notation_parser_SAN import parse_voice_to_san
-        san_move = parse_voice_to_san(voice_text)
-        
-        if not san_move:
-            print("❌ Could not convert voice text to SAN notation")
-            return None, voice_text
-        
-        print(f"♟️ SAN notation: '{san_move}'")
-        
-        # Step 3: Convert SAN to UCI using python-chess
-        from game.chess_notation_parser_SAN import convert_san_to_uci
-        uci_move = convert_san_to_uci(san_move, board)
+        # Step 2: Use the integrated SAN parser with board validation
+        uci_move = parse_chess_notation_san_to_uci(voice_text, board)
         
         if not uci_move:
-            print("❌ Could not convert SAN to UCI (move may be illegal)")
+            print("❌ Could not parse move (invalid or illegal)")
             return None, voice_text
         
         print(f"🎯 UCI move: '{uci_move}'")
-        print(f"✅ Complete pipeline: Audio → '{voice_text}' → '{san_move}' → '{uci_move}'")
+        print(f"✅ Complete pipeline: Audio → '{voice_text}' → '{uci_move}' (validated against board)")
         
         return uci_move, voice_text
             

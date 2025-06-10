@@ -230,7 +230,8 @@ class GameManager:
                 return False
             
             try:
-                move = move_function()
+                # Pass the current board state to the voice recognition function
+                move = move_function(self.state.board)
                 
                 if not self.move_thread_active:
                     return False

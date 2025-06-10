@@ -7,7 +7,7 @@ import wave
 import tempfile
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 from dotenv import load_dotenv
-from .chess_notation_parser import parse_chess_notation_for_lichess, get_promotion_piece
+from .chess_notation_parser_SAN import parse_chess_notation_san_to_uci
 
 # Load environment variables
 load_dotenv()
@@ -117,29 +117,16 @@ class DeepgramVoiceRecognizer:
                 pass
             return None
 
-def process_chess_command(text):
-    """Process a spoken chess command and convert it to a UCI move."""
+def process_chess_command(text, board_state=None):
+    """Process a spoken chess command and convert it to a UCI move using SAN parser."""
     if not text:
         return None
         
-    # Check for exit command
-    if 'exit' in text.lower() or 'quit' in text.lower():
-        return "EXIT"
+    # Use the new SAN parser with board validation
+    move = parse_chess_notation_san_to_uci(text, board_state)
     
-    if "resign" in text.lower():
-        return "resign"
-    if "accept draw" in text.lower():
-        return "accept draw"
-    if "decline draw" in text.lower():
-        return "decline draw"
-    if "draw" in text.lower():
-        return "draw"
-    
-    # Try to parse the move
-    move = parse_chess_notation_for_lichess(text)
     if move:
-        print(f"Parsed as UCI move: {move}")
-        print(f"This is the format needed for the Lichess API.")
+        print(f"✅ Parsed move: '{text}' -> '{move}' (validated against current position)")
         
         # Provide a more human-readable interpretation
         if move == "e1g1":
@@ -153,22 +140,25 @@ def process_chess_command(text):
         elif len(move) == 4:
             print(f"Interpreted as: Move from {move[0:2]} to {move[2:4]}")
         elif len(move) == 5:  # Promotion
-            print(f"Interpreted as: Move from {move[0:2]} to {move[2:4]} and promote to {get_promotion_piece(move[4])}")
+            promotion_piece = {'q': 'Queen', 'r': 'Rook', 'b': 'Bishop', 'n': 'Knight'}.get(move[4], move[4])
+            print(f"Interpreted as: Move from {move[0:2]} to {move[2:4]} and promote to {promotion_piece}")
     else:
-        print("Could not parse this as a UCI chess move.")
+        print("❌ Could not parse this as a chess move.")
         print("Try saying something like:")
-        print("- 'e2 to e4'")
+        print("- 'pawn to e4'")
+        print("- 'knight to f3'")
+        print("- 'pawn from g takes h5'")
         print("- 'castle kingside'")
-        print("- 'e7 to e8 promote to queen'")
+        print("- 'pawn to e8 promote to queen'")
     
     return move
 
-def get_chess_move_from_voice():
+def get_chess_move_from_voice(board_state=None):
     """Complete process to get a chess move from voice input using Deepgram."""
     try:
         recognizer = DeepgramVoiceRecognizer()
         text = recognizer.recognize_speech_simple()
-        return process_chess_command(text)
+        return process_chess_command(text, board_state)
     except Exception as e:
         print(f"Error initializing Deepgram Speech Recognition: {e}")
         print("Please check your Deepgram API key in the .env file")
