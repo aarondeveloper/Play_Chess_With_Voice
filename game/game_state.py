@@ -37,6 +37,7 @@ class GameState:
     def update_from_event(self, event):
         """Update state from a game event"""
         if event['type'] == 'gameState':
+            move_info = None
             old_turn = self.is_my_turn
             
             # Determine turn based on moves and our color
