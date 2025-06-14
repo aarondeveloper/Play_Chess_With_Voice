@@ -1,3 +1,22 @@
 # requirements.txt (add these to your existing requirements)
 flask
 flask-socketio
+python-socketio
+python-engineio
+
+# Chess
+python-chess
+berserk
+
+# Voice Recognition and Audio
+deepgram-sdk
+pyaudio
+SpeechRecognition
+gTTS
+pygame
+
+# Environment Variables
+python-dotenv
+
+# Utilities
+requests
