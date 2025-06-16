@@ -1,41 +1,132 @@
-# Voice-Controlled Chess
+# Play Chess With Voice
 
-A voice-controlled chess application that allows you to play on Lichess.org using voice commands.
+A Python application that allows you to play chess on Lichess using voice commands. This project enables hands-free chess gameplay by converting your spoken moves into chess notation and executing them on the board.
 
-## Setup
+## Requirements
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   pip install berserk python-chess pyttsx3 SpeechRecognition pyaudio python-dotenv
-   ```
-3. Create a `.env` file in the project root with your Lichess API token:
-   ```
-   LICHESS_API_TOKEN=your_token_here
-   ```
-4. Run the test scripts to verify your setup:
-   ```
-   python test_lichess_connection.py
-   python test_voice_recognition.py
-   ```
-5. Run the main application:
-   ```
-   python sample_structure.py
-   ```
+- Python 3.11 (required for system parity)
+- A Lichess account
+- A Deepgram account (free tier available)
+- A microphone
+- Speakers or headphones
 
-## How to Get a Lichess API Token
+## Installation
 
-1. Create a Lichess account if you don't have one
-2. Go to https://lichess.org/account/oauth/token
-3. Create a new personal token with the `board:play` scope
+1. Clone this repository:
+```bash
+git clone https://github.com/yourusername/Play_Chess_With_Voice.git
+cd Play_Chess_With_Voice
+```
+
+2. Create a virtual environment (recommended):
+```bash
+python3.11 -m venv play_chess_voice
+source play_chess_voice/bin/activate  # On Windows: play_chess_voice\Scripts\activate
+```
+
+3. Install the required packages:
+```bash
+pip install -r requirements.txt
+```
+
+4. Set up your API keys:
+
+   a. Lichess API token:
+   - Go to https://lichess.org/account/oauth/token
+   - Create a new token with the following scopes:
+     - `challenge:write`
+     - `board:play`
+   - Copy the token and save it securely
+
+   b. Deepgram API key:
+   - Go to https://console.deepgram.com/signup
+   - Create a free account
+   - Once logged in, go to the API keys section
+   - Create a new API key
+   - Copy the key and save it securely
+
+5. Create a `.env` file in the project root with your API keys:
+```bash
+LICHESS_API_TOKEN=your_lichess_token_here
+DEEPGRAM_API_KEY=your_deepgram_key_here
+```
 
 ## Usage
 
-- Say chess moves in standard notation (e.g., "e2 to e4", "Knight to f3")
-- The application will make the move on Lichess and announce your opponent's moves
+1. Start the application:
+```bash
+python main.py
+```
+
+2. Voice Commands:
+
+   ### Basic Moves
+   - Simple pawn moves: "e4", "d5"
+   - Piece moves: "knight to f3", "bishop to e4"
+   - You can also say: "move knight to f3", "move bishop to e4"
+
+   ### Captures
+   - Pawn captures: "pawn from e takes g5", "e pawn takes g5", "e takes g5"
+   - Piece captures: "knight takes e4", "bishop takes d5"
+
+   ### Special Moves
+   - Castling:
+     - "castle kingside" or "castle short"
+     - "castle queenside" or "castle long"
+   - Pawn promotion:
+     - "e8 queen" (promotes to queen)
+     - "e8 knight" (promotes to knight)
+     - "e8 bishop" (promotes to bishop)
+     - "e8 rook" (promotes to rook)
+     - "pawn from e takes d8 queen"
+   - En passant:
+     - "pawn from e takes d6" or "e pawn takes d6" or "e takes d6"
+
+   Note: You don't need to say "check" when making a move - the system will automatically announce when you or your opponent is in check. Saying check can actually mess up my regex logic 
+
+   ### Game Commands
+   - "resign" - Resign the current game
+   - "draw" - Offer a draw
+   - "accept draw" - Accept a draw offer
+   - "decline draw" - Decline a draw offer
+   - "exit" - Exit the game
+
+3. The system will:
+   - Announce opponent's moves
+   - Confirm your moves
+   - Notify you of game status changes
+   - Alert you if it doesn't understand your move
 
 ## Features
 
-- Voice control for chess moves
-- Real-time game streaming
-- Support for human opponents 
+- Real-time voice recognition for chess moves using Deepgram's advanced speech-to-text
+- Text-to-speech feedback for game events
+- Support for all standard chess moves and special moves (castling, en passant)
+- Game status announcements
+- Draw offer handling
+- Resignation capability
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. Make sure your microphone is properly connected and configured
+2. Check that your Lichess API token is valid
+3. Verify your Deepgram API key is correct and has available credits
+4. Ensure you're using Python 3.11
+5. Verify all required packages are installed
+6. Check your internet connection 
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Lichess API for providing the chess platform
+- Deepgram for high-quality speech recognition
+- Google Text-to-Speech for voice synthesis
