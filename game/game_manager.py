@@ -238,6 +238,7 @@ class GameManager:
                     
                 if not move:
                     print("Couldn't understand the move. Please try again.")
+                    self.speak_status("Speak up!")
                     continue
                 
                 # First check if it's a command
@@ -257,6 +258,7 @@ class GameManager:
                 if not self.move_thread_active:
                     return False
                 print(f"Error making move: {e}")
+                #self.speak_status("Not a move")
                 print("Please try again.")
 
     def stop_move_thread(self):
