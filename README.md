@@ -26,7 +26,7 @@ source play_chess_voice/bin/activate  # On Windows: play_chess_voice\Scripts\act
 
 3. Install the required packages:
 ```bash
-pip install -r requirements.txt
+pip3.11 install -r requirements.txt
 ```
 
 4. Set up your API keys:
