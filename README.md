@@ -45,11 +45,33 @@ pip3.11 install -r requirements.txt
    - Create a new API key
    - Copy the key and save it securely
 
-5. Create a `.env` file in the project root with your API keys:
+5. Create a `.env` file in the project root with your API keys and opponent settings:
 ```bash
 LICHESS_API_TOKEN=your_lichess_token_here
 DEEPGRAM_API_KEY=your_deepgram_key_here
+OPPONENT_USERNAME=username_to_challenge  # Optional: Set this to challenge specific opponents
 ```
+
+## Game Setup
+
+When you start a game, you'll be prompted to specify your game settings:
+
+1. Time Control:
+   - Choose between different time controls (e.g., 5+0, 10+0, 15+10)
+   - Specify increment if desired
+
+2. Challenge Type:
+   - Open Challenge: Creates a public challenge that anyone can accept
+   - Direct Challenge: Challenges a specific opponent (requires OPPONENT_USERNAME in .env)
+
+3. Color Preference:
+   - Choose your preferred color (white/black/random)
+
+4. Game Type:
+   - Rated: Game will affect your Lichess rating
+   - Unrated: Game won't affect your rating
+
+The system will then create the challenge and wait for your opponent to accept.
 
 ## Usage
 
@@ -105,6 +127,7 @@ python main.py
 - Game status announcements
 - Draw offer handling
 - Resignation capability
+- Flexible game setup with time controls and challenge options
 
 ## Troubleshooting
 
@@ -115,7 +138,7 @@ If you encounter issues:
 3. Verify your Deepgram API key is correct and has available credits
 4. Ensure you're using Python 3.11
 5. Verify all required packages are installed
-6. Check your internet connection 
+6. Check your internet connection
 
 ## Contributing
 

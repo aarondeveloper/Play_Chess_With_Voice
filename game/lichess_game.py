@@ -169,7 +169,7 @@ class LichessVoiceGame:
             if move_thread and move_thread.is_alive():
                 move_thread.join(timeout=1.0)
 
-def main(debug=False):
+def main():
     # """Main function to start and play games"""
     # game = LichessVoiceGame()
     
@@ -188,6 +188,7 @@ def main(debug=False):
         print("Starting game setup...")
         game_id = None
         # Get game settings through voice dialog
+        debug = True
         if debug:
             settings = get_game_settings_from_voice()
             game_id = game.create_game_with_settings(settings)
