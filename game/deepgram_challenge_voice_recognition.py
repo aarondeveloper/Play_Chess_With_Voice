@@ -264,9 +264,9 @@ def get_game_settings_from_voice():
         
         # Handle opponent name if not open challenge
         if not settings.get('is_open', True):
-            tts.speak("Please spell out the username of your opponent")
+            tts.speak("Getting opponent name from environment variable")
             try:
-                opponent = tts.recognize_speech()
+                opponent = os.getenv('OPPONENT_NAME')
                 if opponent:
                     opponent = opponent.replace(" ", "")
                     tts.speak(f"Challenging player: {opponent}")
