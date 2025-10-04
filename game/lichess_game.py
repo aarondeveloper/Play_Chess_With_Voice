@@ -9,6 +9,7 @@ from .deepgram_challenge_voice_recognition import get_game_settings_from_voice
 from .game_manager import GameManager
 import time
 from .deepgram_would_you_like_to_play_voice_recognition import ask_to_play
+from .deepgram_do_you_want_solve_puzzles import ask_to_solve_puzzles
 import threading
 
 # Load environment variables
@@ -180,9 +181,18 @@ def main():
         
         # Ask if they want to play
         want_to_play = ask_to_play(game.game_manager)
-        if want_to_play is False:  # They said no
-            break
-        elif want_to_play is None:  # Unclear response
+        if want_to_play is False:  # They said no to chess
+            # Ask if they want to solve puzzles instead
+            puzzles = ask_to_solve_puzzles(game.game_manager)
+            if puzzles is False:  # They said no to puzzles too
+                break
+            elif puzzles is True:  # They want puzzles
+                # TODO: Implement puzzle solving logic
+                print("Puzzle solving not implemented yet!")
+                break
+            else:  # Unclear response about puzzles
+                continue
+        elif want_to_play is None:  # Unclear response about chess
             continue
         
         print("Starting game setup...")
@@ -215,6 +225,9 @@ def main():
         
         print("\nGame finished. Starting new game setup...")
         time.sleep(1)  # Brief pause before next game setup
+
+
+    print("Thanks for playing! Goodbye.")
 
 if __name__ == "__main__":
     main() 
