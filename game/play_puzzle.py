@@ -89,33 +89,50 @@ class PuzzlePlayer:
                 # Add the square name to the correct piece type and color list
                 pieces_on_board[piece.color][piece.piece_type].append(square_name)
 
-        # Describe the position
-        description = []
+        # Describe the position with natural pauses
+        description_parts = []
         
         # Determine whose turn it is
         turn_color = "White" if self.board.turn == chess.WHITE else "Black"
-        description.append(f"It is {turn_color}'s turn to move.")
+        description_parts.append(f"It is {turn_color}'s turn to move.")
         
-        # Describe White pieces
-        description.append("White pieces:")
+        # Describe White pieces with natural formatting
+        description_parts.append("White pieces:")
         for piece_type, locations in pieces_on_board[chess.WHITE].items():
             piece_name = chess.piece_name(piece_type).capitalize()
             if locations:
-                description.append(f"  {piece_name}: {', '.join(locations)}")
+                # Format locations with commas and "and" for the last one
+                if len(locations) == 1:
+                    locations_text = f"{piece_name} on {locations[0]}"
+                elif len(locations) == 2:
+                    locations_text = f"{piece_name} on {locations[0]} and {locations[1]}"
+                else:
+                    locations_text = f"{piece_name} on {', '.join(locations[:-1])} and {locations[-1]}"
+                description_parts.append(locations_text)
                 
-        # Describe Black pieces  
-        description.append("Black pieces:")
+        # Describe Black pieces with natural formatting
+        description_parts.append("Black pieces:")
         for piece_type, locations in pieces_on_board[chess.BLACK].items():
             piece_name = chess.piece_name(piece_type).capitalize()
             if locations:
-                description.append(f"  {piece_name}: {', '.join(locations)}")
+                # Format locations with commas and "and" for the last one
+                if len(locations) == 1:
+                    locations_text = f"{piece_name} on {locations[0]}"
+                elif len(locations) == 2:
+                    locations_text = f"{piece_name} on {locations[0]} and {locations[1]}"
+                else:
+                    locations_text = f"{piece_name} on {', '.join(locations[:-1])} and {locations[-1]}"
+                description_parts.append(locations_text)
         
-        # Join all descriptions
-        full_description = " ".join(description)
-        print(f"Board position: {full_description}")
+        # Print the full description for debugging
+        print(f"Board position: {' '.join(description_parts)}")
         
-        # Speak the description
-        self.tts.speak(full_description)
+        # Speak each part with pauses for more natural speech
+        for part in description_parts:
+            self.tts.speak(part)
+            # Add a small pause between parts
+            import time
+            time.sleep(0.5)
         
     def get_user_move(self):
         """Get a move from the user via voice"""

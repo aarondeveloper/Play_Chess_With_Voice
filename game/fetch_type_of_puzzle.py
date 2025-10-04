@@ -107,7 +107,7 @@ def fetch_puzzle_with_settings(puzzle_settings=None):
         print(f"\n🎯 Puzzle Fetched Successfully!")
         print(f"Rating: {info['rating']}")
         print(f"Themes: {', '.join(info['themes'])}")
-        print(f"Solution moves: {len(info['solution'])}")
+        #print(f"Solution moves: {len(info['solution'])}")
         return puzzle_data
         
     else:
