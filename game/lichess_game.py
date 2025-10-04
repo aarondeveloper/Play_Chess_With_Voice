@@ -10,6 +10,8 @@ from .game_manager import GameManager
 import time
 from .deepgram_would_you_like_to_play_voice_recognition import ask_to_play
 from .deepgram_do_you_want_solve_puzzles import ask_to_solve_puzzles
+from .get_puzzle_type_from_voice import get_puzzle_settings_from_voice
+from .fetch_type_of_puzzle import play_puzzles
 import threading
 
 # Load environment variables
@@ -187,8 +189,12 @@ def main():
             if puzzles is False:  # They said no to puzzles too
                 break
             elif puzzles is True:  # They want puzzles
-                # TODO: Implement puzzle solving logic
-                print("Puzzle solving not implemented yet!")
+                print("Starting puzzle setup...")
+                puzzle_settings = get_puzzle_settings_from_voice()
+                print(f"Puzzle settings: {puzzle_settings}")
+                
+                # Start puzzle solving
+                play_puzzles()
                 break
             else:  # Unclear response about puzzles
                 continue
