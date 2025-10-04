@@ -11,7 +11,8 @@ import time
 from .deepgram_would_you_like_to_play_voice_recognition import ask_to_play
 from .deepgram_do_you_want_solve_puzzles import ask_to_solve_puzzles
 from .get_puzzle_type_from_voice import get_puzzle_settings_from_voice
-from .fetch_type_of_puzzle import play_puzzles
+from .fetch_type_of_puzzle import fetch_puzzle_with_settings
+from .play_puzzle import play_puzzle_main
 import threading
 
 # Load environment variables
@@ -193,8 +194,14 @@ def main():
                 puzzle_settings = get_puzzle_settings_from_voice()
                 print(f"Puzzle settings: {puzzle_settings}")
                 
-                # Start puzzle solving
-                play_puzzles()
+                # Fetch puzzle with settings
+                puzzle_data = fetch_puzzle_with_settings(puzzle_settings)
+                
+                if puzzle_data:
+                    # Start puzzle solving
+                    play_puzzle_main(puzzle_data)
+                else:
+                    print("❌ Failed to fetch puzzle")
                 break
             else:  # Unclear response about puzzles
                 continue

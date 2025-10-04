@@ -86,24 +86,30 @@ class PuzzleFetcher:
             'pgn': game.get('pgn', '')
         }
 
-def play_puzzles():
-    """Main function to start puzzle solving"""
-    print("\n=== CHESS PUZZLE SOLVER ===")
+def fetch_puzzle_with_settings(puzzle_settings=None):
+    """Fetch a puzzle with the given settings"""
+    print("\n=== FETCHING PUZZLE ===")
     
     fetcher = PuzzleFetcher()
     
-    # For now, fetch a basic puzzle
-    puzzle_data = fetcher.fetch_puzzle()
+    # Fetch puzzle with settings
+    if puzzle_settings:
+        puzzle_data = fetcher.fetch_puzzle(
+            difficulty=puzzle_settings.get('difficulty', 'normal'),
+            color=puzzle_settings.get('color'),
+            theme=puzzle_settings.get('theme')
+        )
+    else:
+        puzzle_data = fetcher.fetch_puzzle()
     
     if puzzle_data:
         info = fetcher.get_puzzle_info(puzzle_data)
-        print(f"\n🎯 Puzzle Ready!")
+        print(f"\n🎯 Puzzle Fetched Successfully!")
         print(f"Rating: {info['rating']}")
         print(f"Themes: {', '.join(info['themes'])}")
         print(f"Solution moves: {len(info['solution'])}")
-        
-        # TODO: Implement puzzle solving logic here
-        print("Puzzle solving interface not implemented yet!")
+        return puzzle_data
         
     else:
-        print("❌ Failed to load puzzle. Please try again.")
+        print("❌ Failed to fetch puzzle. Please try again.")
+        return None
