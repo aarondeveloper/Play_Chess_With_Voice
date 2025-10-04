@@ -9,7 +9,7 @@ python-chess
 berserk
 
 # Voice Recognition and Audio
-deepgram-sdk
+deepgram-sdk==3.2.7
 pyaudio
 SpeechRecognition
 gTTS

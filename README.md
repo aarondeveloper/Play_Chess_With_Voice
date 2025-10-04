@@ -29,6 +29,15 @@ source play_chess_voice/bin/activate  # On Windows: play_chess_voice\Scripts\act
 pip3.11 install -r requirements.txt
 ```
 
+**⚠️ IMPORTANT: Deepgram SDK Version**
+This project requires Deepgram SDK v3.2.7 (older version) because the newer v5.0.0+ has breaking API changes.
+
+If you encounter import errors with `PrerecordedOptions` or `FileSource`, run:
+```bash
+pip uninstall deepgram-sdk -y
+pip install deepgram-sdk==3.2.7
+```
+
 4. Set up your API keys:
 
    a. Lichess API token:
@@ -133,12 +142,22 @@ python main.py
 
 If you encounter issues:
 
-1. Make sure your microphone is properly connected and configured
-2. Check that your Lichess API token is valid
-3. Verify your Deepgram API key is correct and has available credits
-4. Ensure you're using Python 3.11
-5. Verify all required packages are installed
-6. Check your internet connection
+1. **Deepgram Import Errors**: If you get `ImportError: cannot import name 'PrerecordedOptions'`:
+   ```bash
+   pip uninstall deepgram-sdk -y
+   pip install deepgram-sdk==3.2.7
+   ```
+
+2. **API Method Errors**: If you get `'Listen' object has no attribute 'rest'`:
+   - This means you have the wrong Deepgram SDK version
+   - Install the older version: `pip install deepgram-sdk==3.2.7`
+
+3. Make sure your microphone is properly connected and configured
+4. Check that your Lichess API token is valid
+5. Verify your Deepgram API key is correct and has available credits
+6. Ensure you're using Python 3.11
+7. Verify all required packages are installed
+8. Check your internet connection
 
 ## Contributing
 
