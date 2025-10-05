@@ -94,17 +94,28 @@ class DeepgramVoiceRecognizer:
             # Clean up temporary file
             os.unlink(temp_filename)
             
-            # Extract transcription
-            if response.results and response.results.channels:
-                transcript = response.results.channels[0].alternatives[0].transcript
-                if transcript.strip():
-                    print(f"You said: {transcript}")
-                    return transcript
+            # Check if there was any audio activity before showing error messages
+            import struct
+            audio_data = b''.join(frames)
+            samples = struct.unpack('<' + 'h' * (len(audio_data) // 2), audio_data)
+            volume = sum(abs(sample) for sample in samples) / len(samples)
+            
+            # Only show error messages if there was actual audio activity
+            if volume > 200:  # Threshold for detecting speech/audio
+                # Extract transcription
+                if response.results and response.results.channels:
+                    transcript = response.results.channels[0].alternatives[0].transcript
+                    if transcript.strip():
+                        print(f"You said: {transcript}")
+                        return transcript
+                    else:
+                        print("No speech detected")
+                        return None
                 else:
-                    print("No speech detected")
+                    print("No speech could be recognized")
                     return None
             else:
-                print("No speech could be recognized")
+                # No audio detected, just return None silently
                 return None
                 
         except Exception as e:
