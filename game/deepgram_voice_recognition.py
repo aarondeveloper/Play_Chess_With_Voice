@@ -89,7 +89,7 @@ class DeepgramVoiceRecognizer:
             )
             
             # Send to Deepgram for transcription
-            response = self.client.listen.rest.v("1").transcribe_file(payload, options)
+            response = self.client.listen.prerecorded.v("1").transcribe_file(payload, options)
             
             # Clean up temporary file
             os.unlink(temp_filename)

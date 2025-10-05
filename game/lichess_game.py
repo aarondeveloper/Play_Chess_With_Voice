@@ -9,6 +9,10 @@ from .deepgram_challenge_voice_recognition import get_game_settings_from_voice
 from .game_manager import GameManager
 import time
 from .deepgram_would_you_like_to_play_voice_recognition import ask_to_play
+from .deepgram_do_you_want_solve_puzzles import ask_to_solve_puzzles
+from .get_puzzle_type_from_voice import get_puzzle_settings_from_voice
+from .fetch_type_of_puzzle import fetch_puzzle_with_settings
+from .play_puzzle import play_puzzle_main
 import threading
 
 # Load environment variables
@@ -180,15 +184,34 @@ def main():
         
         # Ask if they want to play
         want_to_play = ask_to_play(game.game_manager)
-        if want_to_play is False:  # They said no
-            break
-        elif want_to_play is None:  # Unclear response
+        if want_to_play is False:  # They said no to chess
+            # Ask if they want to solve puzzles instead
+            puzzles = ask_to_solve_puzzles(game.game_manager)
+            if puzzles is False:  # They said no to puzzles too
+                break
+            elif puzzles is True:  # They want puzzles
+                print("Starting puzzle setup...")
+                puzzle_settings = get_puzzle_settings_from_voice()
+                print(f"Puzzle settings: {puzzle_settings}")
+                
+                # Fetch puzzle with settings
+                puzzle_data = fetch_puzzle_with_settings(puzzle_settings)
+                
+                if puzzle_data:
+                    # Start puzzle solving
+                    play_puzzle_main(puzzle_data)
+                else:
+                    print("❌ Failed to fetch puzzle")
+                break
+            else:  # Unclear response about puzzles
+                continue
+        elif want_to_play is None:  # Unclear response about chess
             continue
         
         print("Starting game setup...")
         game_id = None
         # Get game settings through voice dialog
-        debug = True
+        debug = not True
         if debug:
             settings = get_game_settings_from_voice()
             game_id = game.create_game_with_settings(settings)
@@ -215,6 +238,9 @@ def main():
         
         print("\nGame finished. Starting new game setup...")
         time.sleep(1)  # Brief pause before next game setup
+
+
+    print("Thanks for playing! Goodbye.")
 
 if __name__ == "__main__":
     main() 
