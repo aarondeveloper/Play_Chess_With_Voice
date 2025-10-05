@@ -195,13 +195,26 @@ class PuzzlePlayer:
                 print("✅ Correct move!")
                 self.tts.speak("Correct!")
                 
-                # Make the move on the board
+                # Make the user's move on the board
                 self.board.push(user_move)
                 self.current_move_index += 1
                 
-                # If there are more moves, describe the new position
+                # If there are more moves, play the opponent's response automatically
                 if self.current_move_index < len(self.solution_moves):
-                    self.describe_board_position()
+                    # Get the opponent's move and convert to SAN before playing it
+                    opponent_move_uci = self.solution_moves[self.current_move_index]
+                    opponent_move = chess.Move.from_uci(opponent_move_uci)
+                    
+                    # Get SAN notation before playing the move
+                    opponent_san = self.board.san(opponent_move)
+                    
+                    # Play the opponent's move
+                    self.board.push(opponent_move)
+                    self.current_move_index += 1
+                    
+                    # Tell the user what the opponent played
+                    print(f"Opponent plays: {opponent_san}")
+                    self.tts.speak(f"Opponent plays {opponent_san}")
                 else:
                     print("🎉 Puzzle solved!")
                     self.tts.speak("Congratulations! You solved the puzzle!")
