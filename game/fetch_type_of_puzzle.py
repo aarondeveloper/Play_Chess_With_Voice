@@ -12,7 +12,7 @@ class PuzzleFetcher:
     def __init__(self):
         """Initialize the puzzle fetcher with Lichess API token"""
         self.token = os.getenv('LICHESS_API_TOKEN')
-        self.base_url = "https://lichess.org/api/puzzle/daily"
+        self.base_url = "https://lichess.org/api/puzzle/next"
         
     def fetch_puzzle(self, difficulty="normal", color=None, theme=None):
         """
