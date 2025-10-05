@@ -211,7 +211,7 @@ def main():
         print("Starting game setup...")
         game_id = None
         # Get game settings through voice dialog
-        debug = True
+        debug = not True
         if debug:
             settings = get_game_settings_from_voice()
             game_id = game.create_game_with_settings(settings)

@@ -137,13 +137,13 @@ class PuzzlePlayer:
     def get_user_move(self):
         """Get a move from the user via voice"""
         print("\n🎤 Listening for your move...")
-        self.tts.speak("What is your move?")
+        self.tts.speak("Take your time to think. What is your move?")
         
-        # Get move from voice
+        # Get move from voice (now with 60 second timeout)
         move_uci = get_chess_move_from_voice(self.board)
         
         if not move_uci:
-            self.tts.speak("I didn't understand your move. Please try again.")
+            self.tts.speak("I didn't catch that. Please speak clearly and try again.")
             return None
             
         # Convert UCI to chess.Move object
