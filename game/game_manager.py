@@ -237,8 +237,7 @@ class GameManager:
                     return False
                     
                 if not move:
-                    print("Couldn't understand the move. Please try again.")
-                    self.speak_status("Speak up!")
+                    # No move detected, continue silently (user might be thinking)
                     continue
                 
                 # First check if it's a command
