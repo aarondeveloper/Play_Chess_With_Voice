@@ -4,7 +4,7 @@ Module for playing chess puzzles with voice interaction.
 import chess
 import chess.pgn
 import io
-from .deepgram_voice_recognition import get_chess_move_from_voice
+from .deepgram_voice_recognition import get_chess_move_from_voice, DeepgramVoiceRecognizer
 from .deepgram_challenge_voice_recognition import DeepgramChallengeTTS
 from .chess_notation_parser_SAN import parse_chess_notation_san_to_uci
 
@@ -133,12 +133,14 @@ class PuzzlePlayer:
             # Add a small pause between parts
             import time
             time.sleep(0.5)
+        
         self.tts.speak("Take your time to think. What is your move?")
+        self.tts.speak("At any point you can say 'exit puzzle' to quit")
         
     def get_user_move(self):
         """Get a move from the user via voice"""
         print("\n🎤 Listening for your move...")
-        #self.tts.speak("Take your time to think. What is your move?")
+        print("Say your move or 'exit puzzle' to quit")
         
         # Get move from voice (now with 60 second timeout)
         move_uci = get_chess_move_from_voice(self.board)
@@ -146,6 +148,12 @@ class PuzzlePlayer:
         if not move_uci:
             #self.tts.speak("I didn't catch that. Please speak clearly and try again.")
             return None
+            
+        # Check for exit command
+        if "exit puzzle" in move_uci.lower():
+            print("Exiting puzzle...")
+            self.tts.speak("Exiting puzzle mode.")
+            return "exit"
             
         # Convert UCI to chess.Move object
         try:
@@ -190,6 +198,10 @@ class PuzzlePlayer:
             if not user_move:
                 continue
                 
+            # Check if user wants to exit
+            if user_move == "exit":
+                return False
+                
             # Check if it's correct
             if self.check_solution(user_move):
                 print("✅ Correct move!")
@@ -224,8 +236,48 @@ class PuzzlePlayer:
                 self.tts.speak("That's not the right move. Try again.")
                 
         return True
+        
+    def do_another_puzzle_question(self):
+        """Ask if user wants to do another puzzle and return True/False"""
+        print("\n🎤 Listening for your response...")
+        self.tts.speak("Would you like to solve another puzzle?")
+        
+        # Get response from voice using simple recognition
+        try:
+            recognizer = DeepgramVoiceRecognizer()
+            response = recognizer.recognize_speech_simple(timeout=5)
+            
+            if not response:
+                print("No response detected, assuming no")
+                return False
+                
+            response_lower = response.lower()
+            
+            # Check for yes responses
+            if any(word in response_lower for word in ["yes", "yeah", "yep", "sure", "okay", "ok"]):
+                print("User wants another puzzle")
+                return True
+            # Check for no responses  
+            elif any(word in response_lower for word in ["no", "nope", "exit", "stop", "quit", "done"]):
+                print("User doesn't want another puzzle")
+                return False
+            else:
+                print("Unclear response, assuming no")
+                return False
+                
+        except Exception as e:
+            print(f"Error getting response: {e}")
+            return False
 
 def play_puzzle_main(puzzle_data):
     """Main entry point for playing a puzzle"""
-    player = PuzzlePlayer()
-    return player.play_puzzle(puzzle_data)
+    while True:
+        player = PuzzlePlayer()
+        result = player.play_puzzle(puzzle_data)
+        if result == False:
+            return False
+            
+        # Ask if they want another puzzle
+        if not player.do_another_puzzle_question():
+            return False
+    return True
