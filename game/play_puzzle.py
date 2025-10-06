@@ -1,20 +1,66 @@
 """
 Module for playing chess puzzles with voice interaction.
+Enhanced with theme cycling to prevent puzzle caching.
 """
 import chess
 import chess.pgn
 import io
+import random
 from .deepgram_voice_recognition import get_chess_move_from_voice, DeepgramVoiceRecognizer
 from .deepgram_challenge_voice_recognition import DeepgramChallengeTTS
 from .chess_notation_parser_SAN import parse_chess_notation_san_to_uci
 
 class PuzzlePlayer:
     def __init__(self):
-        """Initialize the puzzle player with TTS"""
+        """Initialize the puzzle player with TTS and theme cycling"""
         self.tts = DeepgramChallengeTTS()
         self.board = None
         self.solution_moves = []
         self.current_move_index = 0
+        
+        # Theme cycling to prevent caching - 100 unique themes
+        # Core themes that are known to work with Lichess API
+        core_themes = [
+            "endgame", "tactics", "opening", "middlegame", "crushing", "short",
+            "advancedPawn", "attackingF2F7", "backRank", "basicCheckmate",
+            "bishopEndgame", "capture", "defensiveMove", "discoveredAttack",
+            "doubleBishopEndgame", "enPassant", "exposedKing", "fork",
+            "hangingPiece", "interference", "knightEndgame", "long",
+            "mate", "mateIn1", "mateIn2", "mateIn3", "mateIn4", "mateIn5",
+            "oneMove", "pawnEndgame", "pin", "promotion",
+            "queenEndgame", "queenRookEndgame", "queensideAttack", "quietMove",
+            "rookEndgame", "sacrifice", "skewer", "smotheredMate",
+            "trappedPiece", "underPromotion", "veryLong", "xRayAttack",
+            "zugzwang"
+        ]
+        
+        # Create 100 unique themes by cycling through core themes with variations
+        self.theme_cycle = []
+        for i in range(100):
+            base_theme = core_themes[i % len(core_themes)]
+            if i < len(core_themes):
+                self.theme_cycle.append(base_theme)
+            else:
+                # Add variations to create more unique themes
+                variation = (i // len(core_themes)) + 1
+                self.theme_cycle.append(f"{base_theme}_{variation}")
+        self.current_theme_index = 0
+    
+    def get_next_theme(self):
+        """Get the next theme in the cycle to prevent caching"""
+        theme = self.theme_cycle[self.current_theme_index]
+        self.current_theme_index = (self.current_theme_index + 1) % len(self.theme_cycle)
+        print(f"🎯 Using theme: {theme} (index: {self.current_theme_index - 1})")
+        return theme
+    
+    def get_theme_stats(self):
+        """Get statistics about theme usage"""
+        return {
+            "total_themes": len(self.theme_cycle),
+            "current_index": self.current_theme_index,
+            "themes_used": self.current_theme_index,
+            "themes_remaining": len(self.theme_cycle) - self.current_theme_index
+        }
         
     def setup_puzzle(self, puzzle_data):
         """Set up the puzzle board and solution"""
@@ -270,17 +316,30 @@ class PuzzlePlayer:
             return False
 
 def play_puzzle_main(puzzle_settings):
-    """Main entry point for playing a puzzle"""
+    """Main entry point for playing a puzzle with theme cycling"""
+    player = PuzzlePlayer()
+    
     while True:
-        # Fetch a new puzzle each time
+        # Get the next theme to prevent caching
+        theme = player.get_next_theme()
+        
+        # Create puzzle settings with the current theme
+        enhanced_settings = puzzle_settings.copy() if puzzle_settings else {}
+        enhanced_settings['theme'] = theme
+        
+        # Get theme statistics
+        stats = player.get_theme_stats()
+        print(f"\n=== FETCHING PUZZLE WITH THEME: {theme} ===")
+        print(f"📊 Theme Stats: {stats['themes_used']}/{stats['total_themes']} themes used")
+        
+        # Fetch a new puzzle with the current theme
         from .fetch_type_of_puzzle import fetch_puzzle_with_settings
-        puzzle_data = fetch_puzzle_with_settings(puzzle_settings)
+        puzzle_data = fetch_puzzle_with_settings(enhanced_settings)
         
         if not puzzle_data:
             print("❌ Failed to fetch puzzle")
             return False
             
-        player = PuzzlePlayer()
         result = player.play_puzzle(puzzle_data)
         if result == False:
             return False
