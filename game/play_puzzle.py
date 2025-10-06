@@ -150,7 +150,7 @@ class PuzzlePlayer:
             return None
             
         # Check for exit command
-        if "exit puzzle" in move_uci.lower():
+        if "exit" in move_uci.lower():
             print("Exiting puzzle...")
             self.tts.speak("Exiting puzzle mode.")
             return "exit"
