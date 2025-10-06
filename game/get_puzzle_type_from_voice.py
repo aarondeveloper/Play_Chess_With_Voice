@@ -17,7 +17,7 @@ def get_puzzle_difficulty_from_voice(tts):
         if not text:
             return "normal"
             
-        text = text.lower().strip()
+        text = text.lower().strip().rstrip('.')
         print(f"You said: {text}")
         
         # Map spoken words to difficulty levels
@@ -55,7 +55,7 @@ def get_puzzle_color_from_voice(tts):
         if not text:
             return None  # Random color
             
-        text = text.lower().strip()
+        text = text.lower().strip().rstrip('.')
         print(f"You said: {text}")
         
         if 'white' in text or 'play as white' in text:
@@ -81,7 +81,7 @@ def get_puzzle_theme_from_voice(tts):
         if not text:
             return None  # No theme filter
             
-        text = text.lower().strip()
+        text = text.lower().strip().rstrip('.')
         print(f"You said: {text}")
         
         # Map spoken words to puzzle themes

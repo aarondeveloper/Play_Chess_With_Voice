@@ -242,16 +242,16 @@ class PuzzlePlayer:
         print("\n🎤 Listening for your response...")
         self.tts.speak("Would you like to solve another puzzle?")
         
-        # Get response from voice using simple recognition
+        # Get response from voice using TTS engine directly
         try:
-            recognizer = DeepgramVoiceRecognizer()
-            response = recognizer.recognize_speech_simple(timeout=5)
+            response = self.tts.recognize_speech(timeout=5)
             
             if not response:
                 print("No response detected, assuming no")
                 return False
                 
-            response_lower = response.lower()
+            print(f"You said: {response}")
+            response_lower = response.lower().strip().rstrip('.')
             
             # Check for yes responses
             if any(word in response_lower for word in ["yes", "yeah", "yep", "sure", "okay", "ok"]):
@@ -269,9 +269,17 @@ class PuzzlePlayer:
             print(f"Error getting response: {e}")
             return False
 
-def play_puzzle_main(puzzle_data):
+def play_puzzle_main(puzzle_settings):
     """Main entry point for playing a puzzle"""
     while True:
+        # Fetch a new puzzle each time
+        from .fetch_type_of_puzzle import fetch_puzzle_with_settings
+        puzzle_data = fetch_puzzle_with_settings(puzzle_settings)
+        
+        if not puzzle_data:
+            print("❌ Failed to fetch puzzle")
+            return False
+            
         player = PuzzlePlayer()
         result = player.play_puzzle(puzzle_data)
         if result == False:
