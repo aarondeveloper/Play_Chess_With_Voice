@@ -194,14 +194,8 @@ def main():
                 puzzle_settings = get_puzzle_settings_from_voice()
                 print(f"Puzzle settings: {puzzle_settings}")
                 
-                # Fetch puzzle with settings
-                puzzle_data = fetch_puzzle_with_settings(puzzle_settings)
-                
-                if puzzle_data:
-                    # Start puzzle solving
-                    play_puzzle_main(puzzle_data)
-                else:
-                    print("❌ Failed to fetch puzzle")
+                # Start puzzle solving with settings
+                play_puzzle_main(puzzle_settings)
                 break
             else:  # Unclear response about puzzles
                 continue

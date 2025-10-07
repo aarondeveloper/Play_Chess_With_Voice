@@ -12,7 +12,7 @@ class PuzzleFetcher:
     def __init__(self):
         """Initialize the puzzle fetcher with Lichess API token"""
         self.token = os.getenv('LICHESS_API_TOKEN')
-        self.base_url = "https://lichess.org/api/puzzle/daily"
+        self.base_url = "https://lichess.org/api/puzzle/next"
         
     def fetch_puzzle(self, difficulty="normal", color=None, theme=None):
         """
@@ -41,12 +41,31 @@ class PuzzleFetcher:
             if theme:
                 params["angle"] = theme
                 
+            # Add cache-busting parameter to ensure different puzzles
+            import time
+            params["_t"] = int(time.time())
+                
             # Set up headers with authentication
             headers = {}
             if self.token:
                 headers["Authorization"] = f"Bearer {self.token}"
+                print(f"Using authentication token: {self.token[:10]}...")
+                
+                # Test if token has puzzle access
+                try:
+                    test_response = requests.get("https://lichess.org/api/account", headers=headers)
+                    if test_response.status_code == 200:
+                        print("✅ Token is valid and authenticated")
+                    else:
+                        print(f"⚠️ Token may not have puzzle:read scope (status: {test_response.status_code})")
+                except:
+                    print("⚠️ Could not verify token permissions")
+            else:
+                print("⚠️ No Lichess API token found - puzzles may be repeated")
                 
             print(f"Fetching puzzle with criteria: {params}")
+            print(f"Request URL: {url}")
+            print(f"Full request: {url}?{requests.compat.urlencode(params)}")
             
             # Make the API request
             response = requests.get(url, params=params, headers=headers)
@@ -57,6 +76,15 @@ class PuzzleFetcher:
                 print(f"Puzzle ID: {puzzle_data['puzzle']['id']}")
                 print(f"Rating: {puzzle_data['puzzle']['rating']}")
                 print(f"Themes: {puzzle_data['puzzle']['themes']}")
+                
+                # Check if we got the same puzzle ID as before
+                if hasattr(self, 'last_puzzle_id'):
+                    if puzzle_data['puzzle']['id'] == self.last_puzzle_id:
+                        print("⚠️ WARNING: Same puzzle ID as before - token may not have puzzle:read scope")
+                    else:
+                        print("✅ Different puzzle ID - token working correctly")
+                self.last_puzzle_id = puzzle_data['puzzle']['id']
+                
                 return puzzle_data
             else:
                 print(f"❌ Failed to fetch puzzle: {response.status_code}")

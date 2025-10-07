@@ -1,20 +1,66 @@
 """
 Module for playing chess puzzles with voice interaction.
+Enhanced with theme cycling to prevent puzzle caching.
 """
 import chess
 import chess.pgn
 import io
-from .deepgram_voice_recognition import get_chess_move_from_voice
+import random
+from .deepgram_voice_recognition import get_chess_move_from_voice, DeepgramVoiceRecognizer
 from .deepgram_challenge_voice_recognition import DeepgramChallengeTTS
 from .chess_notation_parser_SAN import parse_chess_notation_san_to_uci
 
 class PuzzlePlayer:
     def __init__(self):
-        """Initialize the puzzle player with TTS"""
+        """Initialize the puzzle player with TTS and theme cycling"""
         self.tts = DeepgramChallengeTTS()
         self.board = None
         self.solution_moves = []
         self.current_move_index = 0
+        
+        # Theme cycling to prevent caching - 100 unique themes
+        # Core themes that are known to work with Lichess API
+        core_themes = [
+            "endgame", "tactics", "opening", "middlegame", "crushing", "short",
+            "advancedPawn", "attackingF2F7", "backRank", "basicCheckmate",
+            "bishopEndgame", "capture", "defensiveMove", "discoveredAttack",
+            "doubleBishopEndgame", "enPassant", "exposedKing", "fork",
+            "hangingPiece", "interference", "knightEndgame", "long",
+            "mate", "mateIn1", "mateIn2", "mateIn3", "mateIn4", "mateIn5",
+            "oneMove", "pawnEndgame", "pin", "promotion",
+            "queenEndgame", "queenRookEndgame", "queensideAttack", "quietMove",
+            "rookEndgame", "sacrifice", "skewer", "smotheredMate",
+            "trappedPiece", "underPromotion", "veryLong", "xRayAttack",
+            "zugzwang"
+        ]
+        
+        # Create 100 unique themes by cycling through core themes with variations
+        self.theme_cycle = []
+        for i in range(100):
+            base_theme = core_themes[i % len(core_themes)]
+            if i < len(core_themes):
+                self.theme_cycle.append(base_theme)
+            else:
+                # Add variations to create more unique themes
+                variation = (i // len(core_themes)) + 1
+                self.theme_cycle.append(f"{base_theme}_{variation}")
+        self.current_theme_index = 0
+    
+    def get_next_theme(self):
+        """Get the next theme in the cycle to prevent caching"""
+        theme = self.theme_cycle[self.current_theme_index]
+        self.current_theme_index = (self.current_theme_index + 1) % len(self.theme_cycle)
+        print(f"🎯 Using theme: {theme} (index: {self.current_theme_index - 1})")
+        return theme
+    
+    def get_theme_stats(self):
+        """Get statistics about theme usage"""
+        return {
+            "total_themes": len(self.theme_cycle),
+            "current_index": self.current_theme_index,
+            "themes_used": self.current_theme_index,
+            "themes_remaining": len(self.theme_cycle) - self.current_theme_index
+        }
         
     def setup_puzzle(self, puzzle_data):
         """Set up the puzzle board and solution"""
@@ -134,17 +180,26 @@ class PuzzlePlayer:
             import time
             time.sleep(0.5)
         
+        self.tts.speak("Take your time to think. What is your move?")
+        self.tts.speak("At any point you can say 'exit puzzle' to quit")
+        
     def get_user_move(self):
         """Get a move from the user via voice"""
         print("\n🎤 Listening for your move...")
-        self.tts.speak("Take your time to think. What is your move?")
+        print("Say your move or 'exit puzzle' to quit")
         
         # Get move from voice (now with 60 second timeout)
         move_uci = get_chess_move_from_voice(self.board)
         
         if not move_uci:
-            self.tts.speak("I didn't catch that. Please speak clearly and try again.")
+            #self.tts.speak("I didn't catch that. Please speak clearly and try again.")
             return None
+            
+        # Check for exit command
+        if "exit" in move_uci.lower():
+            print("Exiting puzzle...")
+            self.tts.speak("Exiting puzzle mode.")
+            return "exit"
             
         # Convert UCI to chess.Move object
         try:
@@ -189,18 +244,35 @@ class PuzzlePlayer:
             if not user_move:
                 continue
                 
+            # Check if user wants to exit
+            if user_move == "exit":
+                return False
+                
             # Check if it's correct
             if self.check_solution(user_move):
                 print("✅ Correct move!")
                 self.tts.speak("Correct!")
                 
-                # Make the move on the board
+                # Make the user's move on the board
                 self.board.push(user_move)
                 self.current_move_index += 1
                 
-                # If there are more moves, describe the new position
+                # If there are more moves, play the opponent's response automatically
                 if self.current_move_index < len(self.solution_moves):
-                    self.describe_board_position()
+                    # Get the opponent's move and convert to SAN before playing it
+                    opponent_move_uci = self.solution_moves[self.current_move_index]
+                    opponent_move = chess.Move.from_uci(opponent_move_uci)
+                    
+                    # Get SAN notation before playing the move
+                    opponent_san = self.board.san(opponent_move)
+                    
+                    # Play the opponent's move
+                    self.board.push(opponent_move)
+                    self.current_move_index += 1
+                    
+                    # Tell the user what the opponent played
+                    print(f"Opponent plays: {opponent_san}")
+                    self.tts.speak(f"Opponent plays {opponent_san}")
                 else:
                     print("🎉 Puzzle solved!")
                     self.tts.speak("Congratulations! You solved the puzzle!")
@@ -210,8 +282,69 @@ class PuzzlePlayer:
                 self.tts.speak("That's not the right move. Try again.")
                 
         return True
+        
+    def do_another_puzzle_question(self):
+        """Ask if user wants to do another puzzle and return True/False"""
+        print("\n🎤 Listening for your response...")
+        self.tts.speak("Would you like to solve another puzzle?")
+        
+        # Get response from voice using TTS engine directly
+        try:
+            response = self.tts.recognize_speech(timeout=5)
+            
+            if not response:
+                print("No response detected, assuming no")
+                return False
+                
+            print(f"You said: {response}")
+            response_lower = response.lower().strip().rstrip('.')
+            
+            # Check for yes responses
+            if any(word in response_lower for word in ["yes", "yeah", "yep", "sure", "okay", "ok"]):
+                print("User wants another puzzle")
+                return True
+            # Check for no responses  
+            elif any(word in response_lower for word in ["no", "nope", "exit", "stop", "quit", "done"]):
+                print("User doesn't want another puzzle")
+                return False
+            else:
+                print("Unclear response, assuming no")
+                return False
+                
+        except Exception as e:
+            print(f"Error getting response: {e}")
+            return False
 
-def play_puzzle_main(puzzle_data):
-    """Main entry point for playing a puzzle"""
+def play_puzzle_main(puzzle_settings):
+    """Main entry point for playing a puzzle with theme cycling"""
     player = PuzzlePlayer()
-    return player.play_puzzle(puzzle_data)
+    
+    while True:
+        # Get the next theme to prevent caching
+        theme = player.get_next_theme()
+        
+        # Create puzzle settings with the current theme
+        enhanced_settings = puzzle_settings.copy() if puzzle_settings else {}
+        enhanced_settings['theme'] = theme
+        
+        # Get theme statistics
+        stats = player.get_theme_stats()
+        print(f"\n=== FETCHING PUZZLE WITH THEME: {theme} ===")
+        print(f"📊 Theme Stats: {stats['themes_used']}/{stats['total_themes']} themes used")
+        
+        # Fetch a new puzzle with the current theme
+        from .fetch_type_of_puzzle import fetch_puzzle_with_settings
+        puzzle_data = fetch_puzzle_with_settings(enhanced_settings)
+        
+        if not puzzle_data:
+            print("❌ Failed to fetch puzzle")
+            return False
+            
+        result = player.play_puzzle(puzzle_data)
+        if result == False:
+            return False
+            
+        # Ask if they want another puzzle
+        if not player.do_another_puzzle_question():
+            return False
+    return True
