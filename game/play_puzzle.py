@@ -126,7 +126,7 @@ class PuzzlePlayer:
             self.current_move_index = 0
             
             print(f"✅ Puzzle setup complete!")
-            print(f"Solution moves: {self.solution_moves}")
+            # Don't print solution moves to keep them secret
             return True
             
         except Exception as e:
