@@ -6,6 +6,9 @@ import chess
 import chess.pgn
 import io
 import random
+import webbrowser
+import tempfile
+import os
 from .deepgram_voice_recognition import get_chess_move_from_voice, DeepgramVoiceRecognizer
 from .deepgram_challenge_voice_recognition import DeepgramChallengeTTS
 from .chess_notation_parser_SAN import parse_chess_notation_san_to_uci
@@ -17,6 +20,10 @@ class PuzzlePlayer:
         self.board = None
         self.solution_moves = []
         self.current_move_index = 0
+        
+        # Debug settings
+        self.debug_mode = True  # Set to True for demo mode
+        self.is_first_puzzle = True
         
         # Theme cycling to prevent caching - 100 unique themes
         # Core themes that are known to work with Lichess API
@@ -48,6 +55,12 @@ class PuzzlePlayer:
     
     def get_next_theme(self):
         """Get the next theme in the cycle to prevent caching"""
+        # Demo mode: skip theme for first puzzle
+        if self.debug_mode and self.is_first_puzzle:
+            print("🎯 Demo mode: Using default settings for first puzzle")
+            self.is_first_puzzle = False
+            return None
+        
         theme = self.theme_cycle[self.current_theme_index]
         self.current_theme_index = (self.current_theme_index + 1) % len(self.theme_cycle)
         print(f"🎯 Using theme: {theme} (index: {self.current_theme_index - 1})")
@@ -64,41 +77,61 @@ class PuzzlePlayer:
         
     def setup_puzzle(self, puzzle_data):
         """Set up the puzzle board and solution"""
+        print("🔧 Setting up puzzle...")
+        
         if not puzzle_data:
+            print("❌ No puzzle data provided")
             return False
             
         # Create a new board
         self.board = chess.Board()
+        print("✅ Created new chess board")
         
         # Get the PGN from the game
         pgn = puzzle_data.get('game', {}).get('pgn', '')
         if not pgn:
             print("❌ No PGN found in puzzle data")
+            print(f"Puzzle data keys: {list(puzzle_data.keys())}")
+            if 'game' in puzzle_data:
+                print(f"Game keys: {list(puzzle_data['game'].keys())}")
             return False
             
+        print(f"✅ Found PGN: {pgn[:100]}...")
+        
         # Parse the PGN to get all moves
-        pgn_io = io.StringIO(pgn)
-        game = chess.pgn.read_game(pgn_io)
-        
-        if not game:
-            print("❌ Could not parse PGN")
+        try:
+            pgn_io = io.StringIO(pgn)
+            game = chess.pgn.read_game(pgn_io)
+            
+            if not game:
+                print("❌ Could not parse PGN")
+                return False
+                
+            print("✅ Successfully parsed PGN")
+            
+            # Play all moves up to the puzzle position
+            board = game.board()
+            move_count = 0
+            for move in game.mainline_moves():
+                board.push(move)
+                move_count += 1
+                
+            print(f"✅ Played {move_count} moves to reach puzzle position")
+            
+            # Set our board to the puzzle position
+            self.board = board
+            
+            # Get the solution moves
+            self.solution_moves = puzzle_data.get('puzzle', {}).get('solution', [])
+            self.current_move_index = 0
+            
+            print(f"✅ Puzzle setup complete!")
+            # Don't print solution moves to keep them secret
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error setting up puzzle: {e}")
             return False
-            
-        # Play all moves up to the puzzle position
-        board = game.board()
-        for move in game.mainline_moves():
-            board.push(move)
-            
-        # Set our board to the puzzle position
-        self.board = board
-        
-        # Get the solution moves
-        self.solution_moves = puzzle_data.get('puzzle', {}).get('solution', [])
-        self.current_move_index = 0
-        
-        print(f"✅ Puzzle setup complete!")
-        print(f"Solution moves: {self.solution_moves}")
-        return True
         
     def describe_board_position(self):
         """Describe the current board position to the user"""
@@ -173,15 +206,197 @@ class PuzzlePlayer:
         # Print the full description for debugging
         print(f"Board position: {' '.join(description_parts)}")
         
-        # Speak each part with pauses for more natural speech
+        # Just print the description (no voice - display_piece_locations handles voice)
+        print("📋 Board position description:")
         for part in description_parts:
-            self.tts.speak(part)
-            # Add a small pause between parts
-            import time
-            time.sleep(0.5)
+            print(f"  {part}")
         
         self.tts.speak("Take your time to think. What is your move?")
         self.tts.speak("At any point you can say 'exit puzzle' to quit")
+    
+    def display_piece_locations(self):
+        """Display all piece locations in a web browser popup"""
+        if not self.board:
+            return
+            
+        # Determine whose turn it is
+        turn_color = "White" if self.board.turn == chess.WHITE else "Black"
+        
+        # Build HTML content directly by scanning the board
+        print("🔍 Building HTML content...")
+        
+        # Start HTML
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Chess Position - Piece Locations</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
+                .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                h1 {{ text-align: center; color: #333; margin-bottom: 10px; }}
+                .turn {{ text-align: center; font-size: 18px; font-weight: bold; color: #666; margin-bottom: 30px; }}
+                .pieces-container {{ display: flex; gap: 20px; }}
+                .pieces-column {{ flex: 1; background: #f9f9f9; padding: 15px; border-radius: 8px; }}
+                .pieces-column h3 {{ margin-top: 0; text-align: center; color: #333; }}
+                .piece {{ margin: 8px 0; padding: 5px; background: white; border-radius: 4px; font-family: monospace; }}
+                .white-column {{ border-left: 4px solid #ddd; }}
+                .black-column {{ border-left: 4px solid #333; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>📋 CHESS POSITION - PIECE LOCATIONS</h1>
+                <div class="turn">🎯 It is {turn_color}'s turn to move</div>
+                
+                <div class="pieces-container">
+                    <div class="pieces-column white-column">
+                        <h3>⚪ WHITE PIECES</h3>
+        """
+        
+        # Collect white pieces by type
+        white_pieces_by_type = {
+            'King': [], 'Queen': [], 'Rook': [], 'Bishop': [], 'Knight': [], 'Pawn': []
+        }
+        
+        for square in chess.SQUARES:
+            piece = self.board.piece_at(square)
+            if piece and piece.color == chess.WHITE:
+                square_name = chess.square_name(square)
+                piece_name = chess.piece_name(piece.piece_type).capitalize()
+                white_pieces_by_type[piece_name].append(square_name)
+        
+        # Add white pieces to HTML in proper order
+        for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+            if white_pieces_by_type[piece_type]:
+                for square in white_pieces_by_type[piece_type]:
+                    html_content += f'<div class="piece">{piece_type}: {square}</div>'
+        
+        html_content += """
+                    </div>
+                    <div class="pieces-column black-column">
+                        <h3>⚫ BLACK PIECES</h3>
+        """
+        
+        # Collect black pieces by type
+        black_pieces_by_type = {
+            'King': [], 'Queen': [], 'Rook': [], 'Bishop': [], 'Knight': [], 'Pawn': []
+        }
+        
+        for square in chess.SQUARES:
+            piece = self.board.piece_at(square)
+            if piece and piece.color == chess.BLACK:
+                square_name = chess.square_name(square)
+                piece_name = chess.piece_name(piece.piece_type).capitalize()
+                black_pieces_by_type[piece_name].append(square_name)
+        
+        # Add black pieces to HTML in proper order
+        for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+            if black_pieces_by_type[piece_type]:
+                for square in black_pieces_by_type[piece_type]:
+                    html_content += f'<div class="piece">{piece_type}: {square}</div>'
+        
+        html_content += """
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Count total pieces
+        white_count = sum(len(pieces) for pieces in white_pieces_by_type.values())
+        black_count = sum(len(pieces) for pieces in black_pieces_by_type.values())
+        print(f"✅ Found {white_count} white pieces and {black_count} black pieces")
+        
+        # Print organized terminal output
+        print("\n📋 CHESS POSITION - PIECE LOCATIONS")
+        print(f"🎯 It is {turn_color}'s turn to move")
+        print("\n⚪ WHITE PIECES:")
+        for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+            if white_pieces_by_type[piece_type]:
+                squares = ', '.join(white_pieces_by_type[piece_type])
+                print(f"  {piece_type}: {squares}")
+        
+        print("\n⚫ BLACK PIECES:")
+        for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+            if black_pieces_by_type[piece_type]:
+                squares = ', '.join(black_pieces_by_type[piece_type])
+                print(f"  {piece_type}: {squares}")
+        
+        # Voice output - just a simple summary (no blocking)
+        self.tts.speak("Chess position loaded. You can see the piece locations in your browser.")
+        
+        # Use a fixed HTML file that gets updated
+        html_file = os.path.join(tempfile.gettempdir(), 'chess_position.html')
+        
+        # Write/update the HTML file
+        with open(html_file, 'w') as f:
+            f.write(html_content)
+        
+        print(f"📄 HTML file created at: {html_file}")
+        
+        # Open in browser (only if it's the first time)
+        if not hasattr(self, '_browser_opened'):
+            try:
+                # Try different approaches to open the browser
+                file_url = f'file://{html_file}'
+                print(f"🌐 Attempting to open: {file_url}")
+                
+                # Try opening with webbrowser
+                webbrowser.open(file_url)
+                
+                # Also try opening the file directly
+                webbrowser.open(html_file)
+                
+                self._browser_opened = True
+                print("🌐 Opened chess position in browser")
+            except Exception as e:
+                print(f"❌ Could not open browser: {e}")
+                print(f"📄 You can manually open the file at: {html_file}")
+        else:
+            print("🔄 Updated chess position in browser")
+            print(f"📄 File updated at: {html_file}")
+        
+        # Now read out all the pieces (after browser opens)
+        self.tts.speak("Here are the piece locations on the board.")
+        self.tts.speak(f"It is {turn_color}'s turn to move.")
+        
+        # Always start with the player who is to move
+        if self.board.turn == chess.WHITE:
+            self.tts.speak("White pieces:")
+            for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+                if white_pieces_by_type[piece_type]:
+                    squares = ', '.join(white_pieces_by_type[piece_type])
+                    self.tts.speak(f"{piece_type} at {squares}")
+            
+            self.tts.speak("Black pieces:")
+            for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+                if black_pieces_by_type[piece_type]:
+                    squares = ', '.join(black_pieces_by_type[piece_type])
+                    self.tts.speak(f"{piece_type} at {squares}")
+        else:
+            self.tts.speak("Black pieces:")
+            for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+                if black_pieces_by_type[piece_type]:
+                    squares = ', '.join(black_pieces_by_type[piece_type])
+                    self.tts.speak(f"{piece_type} at {squares}")
+            
+            self.tts.speak("White pieces:")
+            for piece_type in ['King', 'Queen', 'Rook', 'Bishop', 'Knight', 'Pawn']:
+                if white_pieces_by_type[piece_type]:
+                    squares = ', '.join(white_pieces_by_type[piece_type])
+                    self.tts.speak(f"{piece_type} at {squares}")
+    
+    def cleanup_html_file(self):
+        """Clean up the HTML file when puzzle is finished"""
+        try:
+            html_file = os.path.join(tempfile.gettempdir(), 'chess_position.html')
+            if os.path.exists(html_file):
+                os.unlink(html_file)
+                print("🗑️ Cleaned up chess position file")
+        except:
+            pass
         
     def get_user_move(self):
         """Get a move from the user via voice"""
@@ -232,6 +447,9 @@ class PuzzlePlayer:
             print("❌ Failed to setup puzzle")
             return False
             
+        # Display piece locations for demo
+        self.display_piece_locations()
+        
         # Describe the initial position
         self.describe_board_position()
         
@@ -276,6 +494,7 @@ class PuzzlePlayer:
                 else:
                     print("🎉 Puzzle solved!")
                     self.tts.speak("Congratulations! You solved the puzzle!")
+                    self.cleanup_html_file()
                     return True
             else:
                 print("❌ Incorrect move")
@@ -325,12 +544,24 @@ def play_puzzle_main(puzzle_settings):
         
         # Create puzzle settings with the current theme
         enhanced_settings = puzzle_settings.copy() if puzzle_settings else {}
-        enhanced_settings['theme'] = theme
         
-        # Get theme statistics
-        stats = player.get_theme_stats()
-        print(f"\n=== FETCHING PUZZLE WITH THEME: {theme} ===")
-        print(f"📊 Theme Stats: {stats['themes_used']}/{stats['total_themes']} themes used")
+        # Demo mode: Set first puzzle to easiest with random color
+        if player.debug_mode and player.is_first_puzzle:
+            enhanced_settings = {
+                'difficulty': 'easiest',
+                'color': random.choice(['white', 'black', None]),
+                'theme': None
+            }
+            print(f"\n=== FETCHING PUZZLE ===")
+            print(f"🎯 Difficulty: easiest")
+            print(f"🎯 Color: {enhanced_settings['color']}")
+            print(f"🎯 Theme: None")
+        else:
+            # Normal mode: use theme cycling
+            enhanced_settings['theme'] = theme
+            stats = player.get_theme_stats()
+            print(f"\n=== FETCHING PUZZLE WITH THEME: {theme} ===")
+            print(f"📊 Theme Stats: {stats['themes_used']}/{stats['total_themes']} themes used")
         
         # Fetch a new puzzle with the current theme
         from .fetch_type_of_puzzle import fetch_puzzle_with_settings
@@ -348,3 +579,5 @@ def play_puzzle_main(puzzle_settings):
         if not player.do_another_puzzle_question():
             return False
     return True
+
+

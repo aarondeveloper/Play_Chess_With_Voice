@@ -191,8 +191,9 @@ def main():
                 break
             elif puzzles is True:  # They want puzzles
                 print("Starting puzzle setup...")
-                puzzle_settings = get_puzzle_settings_from_voice()
-                print(f"Puzzle settings: {puzzle_settings}")
+                # Skip voice prompts - let play_puzzle_main handle theme cycling
+                puzzle_settings = None  # Let the theme cycling handle everything
+                print("Using theme cycling for puzzle variety")
                 
                 # Start puzzle solving with settings
                 play_puzzle_main(puzzle_settings)
